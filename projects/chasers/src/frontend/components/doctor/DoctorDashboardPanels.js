@@ -1,58 +1,14 @@
-import Link from "next/link";
+ "use client";
 
-const patients = [
-  {
-    id: 1,
-    name: "Maria Thompson",
-    age: 67,
-    diagnosis: "Heart Failure",
-    riskLevel: "high",
-    riskScore: 88,
-    reason: "Missed doses and shortness of breath",
-    alert: "Chest pain reported 2 hours ago",
-    progressColor: "bg-red-500",
-    cardAccent: "border-l-red-500",
-  },
-  {
-    id: 2,
-    name: "Daniel Cruz",
-    age: 61,
-    diagnosis: "COPD Exacerbation",
-    riskLevel: "medium",
-    riskScore: 56,
-    reason: "Worsening cough and low inhaler adherence",
-    progressColor: "bg-amber-500",
-    cardAccent: "border-l-amber-500",
-  },
-  {
-    id: 3,
-    name: "Linda Foster",
-    age: 48,
-    diagnosis: "Post-pneumonia Recovery",
-    riskLevel: "low",
-    riskScore: 24,
-    reason: "Stable oxygen logs and consistent medication",
-    progressColor: "bg-emerald-500",
-    cardAccent: "border-l-emerald-500",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { getAlerts, getPatients } from "@/lib/api";
+import LogoutButton from "@/components/auth/LogoutButton";
+import { useAuth } from "@/components/auth/AuthProvider";
 
-const notifications = [
-  {
-    text: "Maria Thompson: chest pain symptom flagged",
-    time: "2 hours ago",
-    dotColor: "bg-red-500",
-  },
-  {
-    text: "Daniel Cruz missed evening inhaler",
-    time: "Yesterday",
-    dotColor: "bg-amber-500",
-  },
-  {
-    text: "New symptom report submitted",
-    time: "15 minutes ago",
-    dotColor: "bg-blue-500",
-  },
+const fallbackPatients = [
+  { id: 1, name: "Maria Thompson", age: 67, diagnosis: "Heart Failure", riskLevel: "high", riskScore: 88, reason: "Missed doses and shortness of breath", alert: "Chest pain reported 2 hours ago" },
+  { id: 2, name: "Daniel Cruz", age: 61, diagnosis: "COPD Exacerbation", riskLevel: "medium", riskScore: 56, reason: "Worsening cough and low inhaler adherence" },
+  { id: 3, name: "Linda Foster", age: 48, diagnosis: "Post-pneumonia Recovery", riskLevel: "low", riskScore: 24, reason: "Stable oxygen logs and consistent medication" },
 ];
 
 const recentActivity = [
@@ -71,43 +27,118 @@ const badgeStyles = {
 };
 
 export default function DoctorDashboardPanels({ showLogout = true }) {
+  const { profile } = useAuth();
+  const [patients, setPatients] = useState(fallbackPatients);
+  const [alerts, setAlerts] = useState([]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
+      try {
+        const [patientData, alertData] = await Promise.all([getPatients(), getAlerts()]);
+        if (ignore) return;
+        const normalized = (patientData || []).map((patient) => ({
+          id: patient.id,
+          name: patient.name,
+          age: patient.age,
+          diagnosis: patient.diagnosis,
+          riskLevel: String(patient.riskLevel || patient.risk_level || "low").toLowerCase(),
+          riskScore: patient.riskScore ?? patient.risk_score ?? 0,
+          reason: patient.reason || patient.notes || "No reason available",
+          alert:
+            (Array.isArray(patient.alerts) && patient.alerts[0]) ||
+            patient.alert ||
+            null,
+        }));
+        setPatients(normalized.length > 0 ? normalized : fallbackPatients);
+        setAlerts(alertData || []);
+      } catch {
+        setPatients(fallbackPatients);
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const highRiskCount = useMemo(
+    () => patients.filter((p) => p.riskLevel === "high").length,
+    [patients]
+  );
+
+  const notifications = useMemo(() => {
+    if (alerts.length > 0) {
+      return alerts.slice(0, 5).map((item) => ({
+        text: `${item.patient_id || item.patientId}: ${item.message || "Alert"}`,
+        time: item.created_at ? new Date(item.created_at).toLocaleString() : "Recent",
+        dotColor: item.severity?.toLowerCase() === "high" ? "bg-red-500" : "bg-amber-500",
+      }));
+    }
+    return [
+      { text: "Maria Thompson: chest pain symptom flagged", time: "2 hours ago", dotColor: "bg-red-500" },
+      { text: "Daniel Cruz missed evening inhaler", time: "Yesterday", dotColor: "bg-amber-500" },
+    ];
+  }, [alerts]);
+
+  const decoratedPatients = useMemo(
+    () =>
+      patients.map((patient) => ({
+        ...patient,
+        progressColor:
+          patient.riskLevel === "high"
+            ? "bg-red-500"
+            : patient.riskLevel === "medium"
+              ? "bg-amber-500"
+              : "bg-emerald-500",
+        cardAccent:
+          patient.riskLevel === "high"
+            ? "border-l-red-500"
+            : patient.riskLevel === "medium"
+              ? "border-l-amber-500"
+              : "border-l-emerald-500",
+      })),
+    [patients]
+  );
+
   return (
     <main className="page-fade mx-auto max-w-7xl">
       <header className="mb-6 flex items-center justify-between rounded-2xl border border-blue-100 bg-white px-6 py-4 shadow-lg">
         <div>
-          <h1 className="text-2xl font-bold text-blue-900">Welcome, Dr. Smith</h1>
+          <h1 className="text-2xl font-bold text-blue-900">
+            Welcome, {profile?.full_name || "Doctor"}
+          </h1>
           <p className="text-sm text-slate-600">
             Here is your post-discharge risk overview.
           </p>
         </div>
         {showLogout ? (
-          <Link
-            href="/"
+          <LogoutButton
             className="rounded-xl border border-white/80 bg-white px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-50"
-          >
-            Logout
-          </Link>
+          />
         ) : null}
       </header>
 
       <section className="mb-6 grid gap-4 md:grid-cols-3">
         <article className="rounded-2xl border border-blue-100 border-t-4 border-t-blue-400 bg-white p-5 shadow-lg">
           <p className="text-sm font-medium text-slate-700">Total Patients</p>
-          <p className="mt-2 text-3xl font-bold text-blue-900">3</p>
+          <p className="mt-2 text-3xl font-bold text-blue-900">{patients.length}</p>
         </article>
         <article className="rounded-2xl border border-blue-100 border-t-4 border-t-red-500 bg-white p-5 shadow-lg">
           <p className="text-sm font-medium text-slate-700">High Risk</p>
-          <p className="mt-2 text-3xl font-bold text-red-600">1</p>
+          <p className="mt-2 text-3xl font-bold text-red-600">{highRiskCount}</p>
         </article>
         <article className="rounded-2xl border border-blue-100 border-t-4 border-t-amber-500 bg-white p-5 shadow-lg">
           <p className="text-sm font-medium text-slate-700">Alerts Today</p>
-          <p className="mt-2 text-3xl font-bold text-amber-600">2</p>
+          <p className="mt-2 text-3xl font-bold text-amber-600">{notifications.length}</p>
         </article>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-5">
-          {patients.map((patient) => (
+          {decoratedPatients.map((patient) => (
             <article
               key={patient.id}
               className={`rounded-2xl border border-blue-100 border-l-4 bg-white p-6 shadow-lg ${patient.cardAccent}`}

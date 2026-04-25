@@ -6,6 +6,16 @@ import { signOut as authSignOut } from "@/lib/auth";
 import { getCurrentUserProfile } from "@/lib/api";
 
 const AuthContext = createContext(null);
+let profileFetchInFlight = null;
+
+async function fetchProfileSnapshot() {
+  if (!profileFetchInFlight) {
+    profileFetchInFlight = getCurrentUserProfile().finally(() => {
+      profileFetchInFlight = null;
+    });
+  }
+  return profileFetchInFlight;
+}
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -27,7 +37,7 @@ export function AuthProvider({ children }) {
       setSession(data.session ?? null);
       if (data.session) {
         try {
-          const me = await getCurrentUserProfile();
+          const me = await fetchProfileSnapshot();
           if (!active) return;
           setProfile(me.profile || null);
           setPatient(me.patient || null);
@@ -50,7 +60,7 @@ export function AuthProvider({ children }) {
             return;
           }
           try {
-            const me = await getCurrentUserProfile();
+            const me = await fetchProfileSnapshot();
             setProfile(me.profile || null);
             setPatient(me.patient || null);
           } catch {

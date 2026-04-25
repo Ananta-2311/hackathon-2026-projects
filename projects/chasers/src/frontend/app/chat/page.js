@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import RoleGate from "@/components/auth/RoleGate";
+import { sendChatMessage } from "@/lib/api";
 
 const initialMessages = [
   {
@@ -15,7 +17,13 @@ const initialMessages = [
   },
 ];
 
-const emergencyKeywords = ["chest pain", "dizzy", "cant breathe", "can't breathe"];
+const emergencyKeywords = [
+  "chest pain",
+  "dizzy",
+  "cant breathe",
+  "can't breathe",
+  "shortness of breath",
+];
 
 const getTime = () =>
   new Date().toLocaleTimeString([], {
@@ -51,26 +59,37 @@ export default function ChatPage() {
     setShowEmergencyAlert(isEmergency);
     setInput("");
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 900);
-    });
+    let botText = isEmergency
+      ? "This sounds serious. Please call 911 immediately or go to your nearest emergency room. Dr. Smith has been notified."
+      : "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.";
+    let emergencyFlag = isEmergency;
+
+    try {
+      const response = await sendChatMessage({ message: value });
+      botText = response.reply || botText;
+      emergencyFlag = Boolean(response.alertCreated);
+    } catch {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 900);
+      });
+    }
 
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
-      text: isEmergency
-        ? "This sounds serious. Please call 911 immediately or go to your nearest emergency room. Dr. Smith has been notified."
-        : "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.",
+      text: botText,
       time: getTime(),
     };
 
     setMessages((prev) => [...prev, botMessage]);
     setIsBotTyping(false);
+    setShowEmergencyAlert(emergencyFlag);
   };
 
   return (
-    <div className="page-fade flex min-h-screen bg-slate-100 px-3 py-4 sm:px-6 sm:py-8">
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
+    <RoleGate allowedRoles={["patient"]}>
+      <div className="page-fade flex min-h-screen bg-slate-100 px-3 py-4 sm:px-6 sm:py-8">
+        <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
         <header className="flex items-center justify-between border-b border-blue-100 px-5 py-4 sm:px-6">
           <h1 className="text-xl font-bold text-blue-900 sm:text-2xl">AI Health Assistant</h1>
           <Link
@@ -150,7 +169,8 @@ export default function ChatPage() {
             Send
           </button>
         </form>
-      </main>
-    </div>
+        </main>
+      </div>
+    </RoleGate>
   );
 }

@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import LogoutButton from "@/components/auth/LogoutButton";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 const medicationItems = [
   { name: "Lisinopril 10mg", dosage: "Once daily", time: "Morning" },
@@ -41,16 +44,26 @@ const medicationTimeBadgeStyles = {
 };
 
 export default function PatientDashboardPanels() {
-  const discharged = "2 days ago";
+  const [nowMs] = useState(() => Date.now());
+  const { patient, profile } = useAuth();
+  const discharged = patient?.created_at
+    ? `${Math.max(
+        1,
+        Math.round((nowMs - new Date(patient.created_at).getTime()) / (1000 * 60 * 60 * 24))
+      )} days ago`
+    : "2 days ago";
   const nextAppointmentDate = "Friday 10am";
-  const doctorName = "Dr. Smith";
+  const doctorName = "Assigned care team";
 
-  const healthSummaryItems = [
-    { label: "Diagnosis", value: "Heart Failure" },
-    { label: "Discharged", value: discharged },
-    { label: "Doctor", value: doctorName },
-    { label: "Next appointment", value: nextAppointmentDate },
-  ];
+  const healthSummaryItems = useMemo(
+    () => [
+      { label: "Diagnosis", value: patient?.diagnosis || "Heart Failure" },
+      { label: "Discharged", value: discharged },
+      { label: "Doctor", value: doctorName },
+      { label: "Next appointment", value: nextAppointmentDate },
+    ],
+    [patient, discharged]
+  );
 
   const medicationCards = medicationItems.map((medication) => {
     const badgeStyle =
@@ -109,15 +122,14 @@ export default function PatientDashboardPanels() {
     <main className="page-fade mx-auto w-full max-w-none">
       <header className="mb-6 flex items-center justify-between rounded-2xl border border-blue-100 bg-white px-6 py-4 shadow-lg">
         <div>
-          <h1 className="text-2xl font-bold text-blue-900">Welcome, Maria!</h1>
+          <h1 className="text-2xl font-bold text-blue-900">
+            Welcome, {profile?.full_name || "Patient"}!
+          </h1>
           <p className="text-sm text-slate-600">Here is your recovery plan for today.</p>
         </div>
-        <Link
-          href="/"
+        <LogoutButton
           className="rounded-xl border border-white/80 bg-white px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-50"
-        >
-          Logout
-        </Link>
+        />
       </header>
 
       <section className="space-y-6">
@@ -180,7 +192,9 @@ export default function PatientDashboardPanels() {
             aria-label="Chat with your AI Health Assistant"
             className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-4 py-2.5 text-sm font-semibold text-blue-800 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 hover:shadow-xl"
           >
-            <img src="/icon.svg" alt="DisIQ" className="h-6 w-6 rounded-full" />
+            <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+              AI
+            </span>
             <span>Chat with your Health AI Assistant</span>
           </Link>
         </div>

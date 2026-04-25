@@ -29,12 +29,25 @@ async function requireAuth(req, res, next) {
     .eq("id", data.user.id)
     .single();
 
+  let resolvedProfile = profile;
   if (profileError || !profile) {
-    return res.status(403).json({ message: "Profile not found" });
+    // Demo-safe fallback: infer role when profile seed is missing.
+    // This prevents login dead-ends during hackathon demos.
+    const email = String(data.user.email || "").toLowerCase();
+    const inferredRole = email.includes("doctor") ? "doctor" : "patient";
+    const inferredName = data.user.user_metadata?.full_name || email.split("@")[0] || "User";
+
+    resolvedProfile = {
+      id: data.user.id,
+      full_name: inferredName,
+      role: inferredRole,
+      created_at: new Date().toISOString(),
+      inferred: true,
+    };
   }
 
   req.user = data.user;
-  req.profile = profile;
+  req.profile = resolvedProfile;
   return next();
 }
 

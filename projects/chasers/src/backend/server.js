@@ -2,14 +2,14 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
+dotenv.config();
+
 const patientsRoute = require("./routes/patients");
 const riskRoute = require("./routes/risk");
 const instructionsRoute = require("./routes/instructions");
 const chatRoute = require("./routes/chat");
 const alertsRoute = require("./routes/alerts");
 const authRoute = require("./routes/auth");
-
-dotenv.config();
 
 function createApp() {
   const app = express();
