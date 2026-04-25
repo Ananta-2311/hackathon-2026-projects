@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { sendChatMessage } from "@/lib/api";
 
 const initialMessages = [
   {
@@ -15,7 +16,16 @@ const initialMessages = [
   },
 ];
 
-const emergencyKeywords = ["chest pain", "dizzy", "cant breathe", "can't breathe"];
+const emergencyKeywords = [
+  "chest pain",
+  "shortness of breath",
+  "severe pain",
+  "fainting",
+  "cant breathe",
+  "can't breathe",
+  "swelling",
+  "high fever",
+];
 
 const getTime = () =>
   new Date().toLocaleTimeString([], {
@@ -51,16 +61,24 @@ export default function ChatPage() {
     setShowEmergencyAlert(isEmergency);
     setInput("");
 
-    await new Promise((resolve) => {
-      setTimeout(resolve, 900);
-    });
+    let botText =
+      "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.";
+    try {
+      const response = await sendChatMessage({ message: value });
+      botText = response.reply || botText;
+      setShowEmergencyAlert(Boolean(response.alertCreated));
+    } catch (_error) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 700);
+      });
+    }
 
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
       text: isEmergency
-        ? "This sounds serious. Please call 911 immediately or go to your nearest emergency room. Dr. Smith has been notified."
-        : "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.",
+        ? "This may be an emergency. Please call 911 or go to the ER now. Your doctor has been notified."
+        : botText,
       time: getTime(),
     };
 

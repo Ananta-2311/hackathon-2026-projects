@@ -8,9 +8,30 @@ const {
 } = require("../services/openaiService");
 
 const router = express.Router();
+const languageLabels = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  ar: "Arabic",
+  zh: "Mandarin",
+  hi: "Hindi",
+};
 
 router.get("/:patientId", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.json([]);
+  if (!supabaseAdmin) {
+    const patient = (req.app.locals.mockStore?.patients || []).find(
+      (item) => item.id === String(req.params.patientId)
+    );
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
+    return res.json([
+      {
+        original_text: patient.doctorNotes || "",
+        simplified_text: patient.simplifiedInstructions || "",
+        translated_text: patient.translatedInstructions || "",
+        language: patient.translatedLanguage || "en",
+      },
+    ]);
+  }
   if (!ensureSupabase(res)) return;
   const { patientId } = req.params;
 
@@ -52,7 +73,14 @@ router.post("/simplify", requireAuth, async (req, res) => {
       simplifiedInstructions = fallbackSimplify(originalInstructions, language);
     }
 
-    if (patientId && supabaseAdmin) {
+    if (patientId && !supabaseAdmin) {
+      const patients = req.app.locals.mockStore?.patients || [];
+      const patient = patients.find((item) => item.id === String(patientId));
+      if (patient) {
+        patient.doctorNotes = originalInstructions;
+        patient.simplifiedInstructions = simplifiedInstructions;
+      }
+    } else if (patientId && supabaseAdmin) {
       const { data: patient, error: patientError } = await supabaseAdmin
         .from("patients")
         .select("id, profile_id, assigned_doctor_id")
@@ -89,6 +117,54 @@ router.post("/simplify", requireAuth, async (req, res) => {
       error: error.message,
     });
   }
+});
+
+router.post("/translate", requireAuth, async (req, res) => {
+  const { text = "", language = "en" } = req.body || {};
+  const label = languageLabels[language] || "Selected language";
+  const translatedText = text
+    ? `[${label}] ${text}`
+    : "No simplified instructions available to translate yet.";
+
+  return res.json({
+    language,
+    languageLabel: label,
+    translatedText,
+  });
+});
+
+router.post("/send", requireAuth, async (req, res) => {
+  const {
+    patientId,
+    originalText = "",
+    simplifiedText = "",
+    translatedText = "",
+    language = "en",
+  } = req.body || {};
+
+  if (!patientId) return res.status(400).json({ message: "patientId is required" });
+
+  if (!supabaseAdmin) {
+    const patients = req.app.locals.mockStore?.patients || [];
+    const patient = patients.find((item) => item.id === String(patientId));
+    if (!patient) return res.status(404).json({ message: "Patient not found" });
+
+    patient.doctorNotes = originalText;
+    patient.simplifiedInstructions = simplifiedText;
+    patient.translatedInstructions = translatedText;
+    patient.translatedLanguage = language;
+
+    return res.status(201).json({
+      patientId,
+      sent: true,
+      language,
+      originalText,
+      simplifiedText,
+      translatedText,
+    });
+  }
+
+  return res.status(501).json({ message: "Supabase mode send not implemented in this endpoint." });
 });
 
 router.post("/", requireAuth, async (req, res) => {

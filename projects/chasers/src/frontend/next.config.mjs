@@ -8,6 +8,22 @@ const nextConfig = {
   turbopack: {
     root: rootDir,
   },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        ...(config.watchOptions || {}),
+        ignored: [
+          "**/.git/**",
+          "**/node_modules/**",
+          "**/.next/**",
+          "../backend/**",
+          "../ML/**",
+        ],
+      };
+    }
+
+    return config;
+  },
 };
 
 export default nextConfig;

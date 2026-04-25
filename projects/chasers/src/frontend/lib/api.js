@@ -31,7 +31,7 @@ async function request(path, options = {}) {
 }
 
 export function getPatients() {
-  return request("/patients");
+  return request("/patients", { headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" } });
 }
 
 export function getCurrentUserProfile() {
@@ -39,12 +39,13 @@ export function getCurrentUserProfile() {
 }
 
 export function getPatientById(id) {
-  return request(`/patients/${id}`);
+  return request(`/patients/${id}`, { headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" } });
 }
 
 export function predictRisk(data) {
   return request("/risk/predict", {
     method: "POST",
+    headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" },
     body: JSON.stringify(data),
   });
 }
@@ -52,6 +53,31 @@ export function predictRisk(data) {
 export function simplifyInstructions(data) {
   return request("/instructions/simplify", {
     method: "POST",
+    headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function translateInstructions(data) {
+  return request("/instructions/translate", {
+    method: "POST",
+    headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function sendInstructionsToPatient(data) {
+  return request("/instructions/send", {
+    method: "POST",
+    headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function extractPrescription(data) {
+  return request("/prescriptions/extract", {
+    method: "POST",
+    headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" },
     body: JSON.stringify(data),
   });
 }
@@ -59,12 +85,17 @@ export function simplifyInstructions(data) {
 export function sendChatMessage(data) {
   return request("/chat", {
     method: "POST",
+    headers: { "x-user-role": "patient", "x-user-id": "patient-1" },
     body: JSON.stringify(data),
   });
 }
 
 export function getAlerts() {
-  return request("/alerts");
+  return request("/alerts", { headers: { "x-user-role": "doctor", "x-user-id": "doctor-1" } });
+}
+
+export function getPatientDashboardData() {
+  return request("/patients/1", { headers: { "x-user-role": "patient", "x-user-id": "patient-1" } });
 }
 
 export { API_BASE_URL };

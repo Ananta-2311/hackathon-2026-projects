@@ -5,6 +5,18 @@ const { supabaseAdmin, ensureSupabase } = require("../lib/supabase");
 const router = express.Router();
 
 router.get("/me", requireAuth, async (req, res) => {
+  if (!supabaseAdmin) {
+    const patient =
+      req.profile.role === "patient"
+        ? req.app.locals.mockStore?.patients?.find((item) => item.id === "1") || null
+        : null;
+    return res.json({
+      user: req.user,
+      profile: req.profile,
+      patient,
+    });
+  }
+
   if (!ensureSupabase(res)) return;
 
   let patient = null;
