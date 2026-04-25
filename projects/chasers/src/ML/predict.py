@@ -33,7 +33,7 @@ def predict(patient):
         reasons.append("No major risk factors detected")
 
     return {
-        "readmission_probability": round(probability * 100, 2),
+        "readmission_probability": float(round(probability * 100, 2)),
         "risk_level": risk_level,
         "reasons": reasons,
     }

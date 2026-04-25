@@ -4,6 +4,14 @@ const mockPatients = [
     name: "Maria Thompson",
     age: 67,
     diagnosis: "Heart Failure",
+    doctorName: "Dr. Smith",
+    dischargeDate: "2026-04-23",
+    medicalHistory: [
+      "Hypertension",
+      "Type 2 diabetes",
+      "Chronic kidney disease stage 2",
+      "Prior heart-failure admission"
+    ],
     riskLevel: "High",
     riskScore: 88,
     medications: ["Lisinopril 10mg", "Furosemide 20mg", "Metoprolol 25mg"],
@@ -15,12 +23,28 @@ const mockPatients = [
     lengthOfStay: 8,
     notes:
       "Missed doses and shortness of breath trends suggest elevated readmission risk.",
+    riskReasons: ["Age over 70", "4 chronic conditions", "2 prior admissions"],
+    followUpSuggestion:
+      "Recommend 3-day follow-up call. Verify caregiver support at home.",
+    doctorNotes:
+      "Continue lisinopril and metoprolol. Restrict sodium to less than 2g/day. Monitor daily weight.",
+    simplifiedInstructions:
+      "1. Take your heart medicines every morning and evening. 2. Eat low-salt meals. 3. Check your weight each morning. 4. Call your doctor if you gain more than 2 pounds in one day.",
+    translatedInstructions: "",
+    translatedLanguage: "",
+    reminders: [
+      { name: "Lisinopril", dose: "10mg", schedule: "Take in the morning with food", dueTime: "8:00 AM" },
+      { name: "Furosemide", dose: "20mg", schedule: "Take at noon", dueTime: "12:00 PM" }
+    ],
   },
   {
     id: "2",
     name: "Daniel Cruz",
     age: 61,
     diagnosis: "COPD Exacerbation",
+    doctorName: "Dr. Smith",
+    dischargeDate: "2026-04-21",
+    medicalHistory: ["COPD", "Hypertension"],
     riskLevel: "Medium",
     riskScore: 56,
     medications: ["Albuterol", "Tiotropium", "Prednisone"],
@@ -31,12 +55,23 @@ const mockPatients = [
     medicationCount: 4,
     lengthOfStay: 5,
     notes: "Worsening cough and low inhaler adherence recorded in recent check-ins.",
+    riskReasons: ["Two chronic conditions", "Recent prior admission"],
+    followUpSuggestion:
+      "Recommend 7-day follow-up appointment. Confirm medications understood.",
+    doctorNotes: "",
+    simplifiedInstructions: "",
+    translatedInstructions: "",
+    translatedLanguage: "",
+    reminders: [],
   },
   {
     id: "3",
     name: "Linda Foster",
     age: 48,
     diagnosis: "Post-pneumonia Recovery",
+    doctorName: "Dr. Smith",
+    dischargeDate: "2026-04-20",
+    medicalHistory: ["Recent pneumonia"],
     riskLevel: "Low",
     riskScore: 24,
     medications: ["Amoxicillin", "Vitamin D"],
@@ -47,6 +82,13 @@ const mockPatients = [
     medicationCount: 2,
     lengthOfStay: 3,
     notes: "Stable oxygen logs and consistent medication adherence over 5 days.",
+    riskReasons: ["Improving vitals", "No prior admissions"],
+    followUpSuggestion: "Standard discharge. Schedule 14-day follow-up.",
+    doctorNotes: "",
+    simplifiedInstructions: "",
+    translatedInstructions: "",
+    translatedLanguage: "",
+    reminders: [],
   },
 ];
 

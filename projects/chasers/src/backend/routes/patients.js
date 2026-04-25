@@ -7,17 +7,26 @@ const router = express.Router();
 
 router.get("/", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
+    const patients = req.app.locals.mockStore?.patients || mockPatients;
+    const alerts = req.app.locals.mockStore?.alerts || [];
     return res.json(
-      mockPatients.map((p) => ({
+      patients.map((p) => ({
         id: p.id,
         name: p.name,
         age: p.age,
         diagnosis: p.diagnosis,
         riskLevel: p.riskLevel,
         riskScore: p.riskScore,
-        medications: p.medications,
-        lastDischargeDate: p.lastDischargeDate,
-        alerts: p.alerts,
+        riskReasons: p.riskReasons || [],
+        followUpSuggestion: p.followUpSuggestion || "",
+        medications: p.medications || [],
+        lastDischargeDate: p.lastDischargeDate || p.dischargeDate,
+        alerts: [
+          ...(p.alerts || []),
+          ...alerts
+            .filter((alert) => String(alert.patientId || alert.patient_id) === String(p.id))
+            .map((alert) => alert.message),
+        ],
       }))
     );
   }
@@ -44,7 +53,8 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.get("/:id", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
-    const patient = mockPatients.find((item) => item.id === String(req.params.id));
+    const patients = req.app.locals.mockStore?.patients || mockPatients;
+    const patient = patients.find((item) => item.id === String(req.params.id));
     if (!patient) return res.status(404).json({ message: "Patient not found" });
     return res.json(patient);
   }

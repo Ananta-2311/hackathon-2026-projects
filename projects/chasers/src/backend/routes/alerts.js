@@ -5,7 +5,7 @@ const { requireAuth, requireRole } = require("../middleware/auth");
 const router = express.Router();
 
 router.get("/", requireAuth, requireRole("doctor"), async (req, res) => {
-  if (!supabaseAdmin) return res.json(req.app.locals.alerts);
+  if (!supabaseAdmin) return res.json(req.app.locals.mockStore?.alerts || []);
   if (!ensureSupabase(res)) return;
 
   const { data: assignedPatients, error: patientsError } = await supabaseAdmin
@@ -43,7 +43,7 @@ router.post("/", requireAuth, requireRole("doctor"), async (req, res) => {
       status,
       created_at: new Date().toISOString(),
     };
-    req.app.locals.alerts.unshift(mockAlert);
+    req.app.locals.mockStore.alerts.unshift(mockAlert);
     return res.status(201).json(mockAlert);
   }
   if (!ensureSupabase(res)) return;

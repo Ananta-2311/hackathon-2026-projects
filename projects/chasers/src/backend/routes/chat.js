@@ -8,10 +8,11 @@ const redFlagSymptoms = [
   "chest pain",
   "shortness of breath",
   "can't breathe",
+  "cant breathe",
   "severe pain",
   "fainting",
-  "bleeding",
-  "fever",
+  "swelling",
+  "high fever",
 ];
 
 function containsRedFlag(message = "") {
@@ -47,7 +48,7 @@ router.get("/history/:patientId", requireAuth, async (req, res) => {
 
 router.post("/", requireAuth, requireRole("patient"), async (req, res) => {
   const { message = "" } = req.body || {};
-  let patientId = "mock-patient";
+  let patientId = "1";
   if (supabaseAdmin) {
     if (!ensureSupabase(res)) return;
     const { data: patient } = await supabaseAdmin
@@ -87,11 +88,17 @@ router.post("/", requireAuth, requireRole("patient"), async (req, res) => {
         .single();
       alert = insertedAlert || null;
     } else {
-      alert = { id: Date.now().toString(), ...alert, created_at: new Date().toISOString() };
-      req.app.locals.alerts.unshift(alert);
+      const patient = (req.app.locals.mockStore?.patients || []).find((item) => item.id === patientId);
+      alert = {
+        id: Date.now().toString(),
+        ...alert,
+        patientName: patient?.name || "Unknown patient",
+        created_at: new Date().toISOString()
+      };
+      req.app.locals.mockStore.alerts.unshift(alert);
     }
     reply =
-      "I detected urgent symptoms and alerted your care team. If symptoms are severe, call emergency services now.";
+      "This may be an emergency. Please call emergency services now or go to the ER. I have alerted your doctor with your exact message.";
   }
 
   if (supabaseAdmin) {

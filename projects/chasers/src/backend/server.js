@@ -10,11 +10,13 @@ const instructionsRoute = require("./routes/instructions");
 const chatRoute = require("./routes/chat");
 const alertsRoute = require("./routes/alerts");
 const authRoute = require("./routes/auth");
+const prescriptionsRoute = require("./routes/prescriptions");
+const { mockPatients } = require("./data/mockPatients");
 
 function createApp() {
   const app = express();
   const allowedOrigins = (process.env.CORS_ORIGIN ||
-    "http://localhost:3000,http://localhost:3001")
+    "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
@@ -30,7 +32,11 @@ function createApp() {
     })
   );
   app.use(express.json());
-  app.locals.alerts = [];
+  app.locals.mockStore = {
+    patients: mockPatients.map((patient) => ({ ...patient })),
+    alerts: [],
+    chats: {},
+  };
 
   app.get("/", (req, res) => {
     res.json({
@@ -50,6 +56,7 @@ function createApp() {
   app.use("/api/chat", chatRoute);
   app.use("/api/alerts", alertsRoute);
   app.use("/api/auth", authRoute);
+  app.use("/api/prescriptions", prescriptionsRoute);
 
   return app;
 }
