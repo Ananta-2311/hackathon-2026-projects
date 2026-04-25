@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useEffect } from "react";
+import { simplifyInstructions } from "@/lib/api";
 
 const instructionsByLanguage = {
   en: [
@@ -41,7 +43,52 @@ const instructionsByLanguage = {
 
 export default function PatientInstructionsView() {
   const [language, setLanguage] = useState("en");
-  const translatedInstructions = instructionsByLanguage[language];
+  const [translatedInstructions, setTranslatedInstructions] = useState(
+    instructionsByLanguage.en
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSimplifiedInstructions() {
+      const baseText = instructionsByLanguage[language]
+        .map((item, index) => `${index + 1}. ${item.text}`)
+        .join("\n");
+
+      try {
+        const response = await simplifyInstructions({
+          originalInstructions: baseText,
+          language,
+        });
+
+        const lines = String(response.simplifiedInstructions || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        if (!ignore && lines.length > 0) {
+          const mapped = lines.map((line, index) => ({
+            emoji: instructionsByLanguage[language][index % instructionsByLanguage[language].length].emoji,
+            text: line.replace(/^\d+[\).\s-]*/, ""),
+          }));
+          setTranslatedInstructions(mapped);
+          return;
+        }
+      } catch (error) {
+        // Keep local mock instructions when backend is unavailable.
+      }
+
+      if (!ignore) {
+        setTranslatedInstructions(instructionsByLanguage[language]);
+      }
+    }
+
+    loadSimplifiedInstructions();
+
+    return () => {
+      ignore = true;
+    };
+  }, [language]);
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-6">
