@@ -7,7 +7,7 @@ const initialMessages = [
   {
     id: 1,
     role: "bot",
-    text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling right now?",
+    text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling today?",
     time: new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -15,7 +15,7 @@ const initialMessages = [
   },
 ];
 
-const emergencyKeywords = ["chest pain", "can't breathe", "dizzy"];
+const emergencyKeywords = ["chest pain", "dizzy", "cant breathe", "can't breathe"];
 
 const getTime = () =>
   new Date().toLocaleTimeString([], {
@@ -27,8 +27,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
+  const [isBotTyping, setIsBotTyping] = useState(false);
 
-  const handleSend = (event) => {
+  const handleSend = async (event) => {
     event.preventDefault();
     const value = input.trim();
     if (!value) return;
@@ -45,37 +46,48 @@ export default function ChatPage() {
       time: getTime(),
     };
 
+    setMessages((prev) => [...prev, patientMessage]);
+    setIsBotTyping(true);
+    setShowEmergencyAlert(isEmergency);
+    setInput("");
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 900);
+    });
+
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
       text: isEmergency
-        ? "I detected urgent symptoms and alerted Dr. Smith. If symptoms are severe, call emergency services now."
-        : "Thanks for sharing, Maria. Keep resting, stay hydrated, and take your medications on schedule.",
+        ? "This sounds serious. Please call 911 immediately or go to your nearest emergency room. Dr. Smith has been notified."
+        : "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.",
       time: getTime(),
     };
 
-    setMessages((prev) => [...prev, patientMessage, botMessage]);
-    setShowEmergencyAlert(isEmergency);
-    setInput("");
+    setMessages((prev) => [...prev, botMessage]);
+    setIsBotTyping(false);
   };
 
   return (
-    <div className="min-h-screen px-6 py-10">
-      <main className="mx-auto flex w-full max-w-4xl flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
-        <header className="border-b border-blue-100 px-6 py-5">
-          <h1 className="text-2xl font-bold text-blue-900">Patient Chat</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Share how you feel after discharge
-          </p>
+    <div className="page-fade flex min-h-screen bg-slate-100 px-3 py-4 sm:px-6 sm:py-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
+        <header className="flex items-center justify-between border-b border-blue-100 px-5 py-4 sm:px-6">
+          <h1 className="text-xl font-bold text-blue-900 sm:text-2xl">AI Health Assistant</h1>
+          <Link
+            href="/patient-dashboard"
+            className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-900 transition hover:bg-blue-100"
+          >
+            Back
+          </Link>
         </header>
 
         {showEmergencyAlert ? (
-          <div className="mx-6 mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-            🚨 Emergency! Alerting Dr. Smith now...
+          <div className="mx-5 mt-4 animate-pulse rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
+            🚨 Emergency detected! Alerting Dr. Smith now...
           </div>
         ) : null}
 
-        <section className="flex-1 space-y-3 px-6 py-5">
+        <section className="flex-1 space-y-3 overflow-y-auto px-5 py-5 sm:px-6">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -84,10 +96,10 @@ export default function ChatPage() {
               }`}
             >
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${
+                className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm sm:max-w-[75%] ${
                   message.role === "patient"
-                    ? "bg-blue-700 text-white"
-                    : "bg-blue-50 text-blue-900"
+                    ? "bg-blue-800 text-white"
+                    : "bg-slate-100 text-slate-800"
                 }`}
               >
                 <p>{message.text}</p>
@@ -95,7 +107,7 @@ export default function ChatPage() {
                   className={`mt-2 text-[11px] ${
                     message.role === "patient"
                       ? "text-blue-100"
-                      : "text-blue-700/70"
+                      : "text-slate-500"
                   }`}
                 >
                   {message.time}
@@ -103,30 +115,41 @@ export default function ChatPage() {
               </div>
             </div>
           ))}
+
+          {isBotTyping ? (
+            <div className="flex justify-start">
+              <div className="rounded-2xl bg-slate-100 px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500 [animation-delay:-0.2s]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500 [animation-delay:-0.1s]" />
+                  <span className="h-2 w-2 animate-bounce rounded-full bg-slate-500" />
+                </div>
+              </div>
+            </div>
+          ) : null}
         </section>
+
+        <p className="border-t border-blue-100 px-5 py-3 text-xs text-slate-500 sm:px-6">
+          This AI does not replace medical advice. In emergencies call 911.
+        </p>
 
         <form
           onSubmit={handleSend}
-          className="flex gap-3 border-t border-blue-100 px-6 py-4"
+          className="flex gap-3 border-t border-blue-100 px-5 py-4 sm:px-6"
         >
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Type how you feel..."
-            className="flex-1 rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+            className="flex-1 rounded-xl border border-blue-200 px-4 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
           />
           <button
             type="submit"
-            className="rounded-xl bg-blue-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-800"
+            className="rounded-xl bg-blue-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-900"
           >
             Send
           </button>
         </form>
-        <div className="px-6 pb-4">
-          <Link href="/patient-dashboard" className="text-sm text-blue-700 hover:underline">
-            Back to Patient Dashboard
-          </Link>
-        </div>
       </main>
     </div>
   );

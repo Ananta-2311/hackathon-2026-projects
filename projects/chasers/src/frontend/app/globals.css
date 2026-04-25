@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f8ff;
+  --background: #f1f5f9;
   --foreground: #0f172a;
-  --brand-blue: #1d4ed8;
-  --brand-blue-soft: #dbeafe;
+  --primary-blue: #1e40af;
+  --alert-red: #ef4444;
+  --success-green: #10b981;
+  --warning-orange: #f59e0b;
 }
 
 @theme inline {
@@ -18,4 +20,31 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+.page-fade {
+  animation: pageFade 0.5s ease-out;
+}
+
+.app-card {
+  @apply rounded-2xl border border-blue-100 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md;
+}
+
+.app-button-primary {
+  @apply rounded-xl border border-blue-800 bg-blue-800 px-5 py-2.5 font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:bg-blue-900 hover:shadow-md;
+}
+
+.app-button-secondary {
+  @apply rounded-xl border border-blue-200 bg-blue-50 px-5 py-2.5 font-semibold text-blue-900 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-100 hover:shadow-md;
+}
+
+@keyframes pageFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

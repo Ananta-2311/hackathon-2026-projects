@@ -23,11 +23,10 @@ export default function DoctorLoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-6 py-12">
-      <main className="w-full max-w-md rounded-2xl border border-blue-100 bg-white p-8 shadow-lg">
-        <p className="text-center text-3xl">🩺</p>
-        <h1 className="mt-3 text-center text-2xl font-bold text-blue-900">
-          Doctor Portal
+    <div className="page-fade flex min-h-screen items-center justify-center bg-slate-100 px-4 py-10 sm:px-6">
+      <main className="w-full max-w-md rounded-2xl border border-blue-100 bg-white p-8 shadow-sm">
+        <h1 className="mt-1 text-center text-3xl font-bold text-blue-900">
+          🩺 Doctor Portal
         </h1>
         <p className="mt-2 text-center text-sm text-slate-600">
           Sign in to access patient risk monitoring.
@@ -43,7 +42,7 @@ export default function DoctorLoginForm() {
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
               placeholder="doctor@dischargeiq.com"
               required
             />
@@ -60,7 +59,7 @@ export default function DoctorLoginForm() {
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
+              className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2.5 text-sm outline-none ring-blue-500 focus:ring-2"
               placeholder="doctor123"
               required
             />
@@ -74,7 +73,7 @@ export default function DoctorLoginForm() {
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white transition hover:bg-blue-800"
+            className="w-full rounded-xl bg-blue-800 px-4 py-3 text-base font-semibold text-white transition hover:bg-blue-900"
           >
             Sign In
           </button>
