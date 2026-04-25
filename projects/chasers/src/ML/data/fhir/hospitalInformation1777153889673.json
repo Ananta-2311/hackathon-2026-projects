@@ -1,0 +1,409 @@
+{
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [ {
+    "fullUrl": "urn:uuid:fd5342f0-10c0-3f48-9c7e-7100a64db139",
+    "resource": {
+      "resourceType": "Organization",
+      "id": "fd5342f0-10c0-3f48-9c7e-7100a64db139",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization" ]
+      },
+      "extension": [ {
+        "url": "http://synthetichealth.github.io/synthea/utilization-encounters-extension",
+        "valueInteger": 2
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-procedures-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-labs-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-prescriptions-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/bed-count-extension",
+        "valueInteger": 90
+      } ],
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "fd5342f0-10c0-3f48-9c7e-7100a64db139"
+      } ],
+      "active": true,
+      "type": [ {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        } ],
+        "text": "Healthcare Provider"
+      } ],
+      "name": "WILLOW MANOR",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9789548086"
+      } ],
+      "address": [ {
+        "line": [ "30 PRINCETON BOULEVARD" ],
+        "city": "LOWELL",
+        "state": "MA",
+        "postalCode": "018512405",
+        "country": "US"
+      } ]
+    },
+    "request": {
+      "method": "POST",
+      "url": "Organization",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|fd5342f0-10c0-3f48-9c7e-7100a64db139"
+    }
+  }, {
+    "fullUrl": "urn:uuid:5bf70d50-f1fe-397a-b497-e5ac064eb087",
+    "resource": {
+      "resourceType": "Location",
+      "id": "5bf70d50-f1fe-397a-b497-e5ac064eb087",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location" ]
+      },
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "5bf70d50-f1fe-397a-b497-e5ac064eb087"
+      } ],
+      "status": "active",
+      "name": "WILLOW MANOR",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9789548086"
+      } ],
+      "address": {
+        "line": [ "30 PRINCETON BOULEVARD" ],
+        "city": "LOWELL",
+        "state": "MA",
+        "postalCode": "018512405",
+        "country": "US"
+      },
+      "position": {
+        "longitude": -71.3322833,
+        "latitude": 42.6353691
+      },
+      "managingOrganization": {
+        "identifier": {
+          "system": "https://github.com/synthetichealth/synthea",
+          "value": "fd5342f0-10c0-3f48-9c7e-7100a64db139"
+        },
+        "display": "WILLOW MANOR"
+      }
+    },
+    "request": {
+      "method": "POST",
+      "url": "Location",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|5bf70d50-f1fe-397a-b497-e5ac064eb087"
+    }
+  }, {
+    "fullUrl": "urn:uuid:2836d9ac-c6a6-39d1-8f13-fdf0fc8928f4",
+    "resource": {
+      "resourceType": "Organization",
+      "id": "2836d9ac-c6a6-39d1-8f13-fdf0fc8928f4",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization" ]
+      },
+      "extension": [ {
+        "url": "http://synthetichealth.github.io/synthea/utilization-encounters-extension",
+        "valueInteger": 27
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-procedures-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-labs-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-prescriptions-extension",
+        "valueInteger": 0
+      } ],
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "2836d9ac-c6a6-39d1-8f13-fdf0fc8928f4"
+      } ],
+      "active": true,
+      "type": [ {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        } ],
+        "text": "Healthcare Provider"
+      } ],
+      "name": "TEWKSBURY HOSPITAL",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9788517321"
+      } ],
+      "address": [ {
+        "line": [ "365 EAST ST" ],
+        "city": "TEWKSBURY",
+        "state": "MA",
+        "postalCode": "018761950",
+        "country": "US"
+      } ]
+    },
+    "request": {
+      "method": "POST",
+      "url": "Organization",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|2836d9ac-c6a6-39d1-8f13-fdf0fc8928f4"
+    }
+  }, {
+    "fullUrl": "urn:uuid:37062c80-1ebb-3ece-ab5e-af0bc290c441",
+    "resource": {
+      "resourceType": "Location",
+      "id": "37062c80-1ebb-3ece-ab5e-af0bc290c441",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location" ]
+      },
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "37062c80-1ebb-3ece-ab5e-af0bc290c441"
+      } ],
+      "status": "active",
+      "name": "TEWKSBURY HOSPITAL",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9788517321"
+      } ],
+      "address": {
+        "line": [ "365 EAST ST" ],
+        "city": "TEWKSBURY",
+        "state": "MA",
+        "postalCode": "018761950",
+        "country": "US"
+      },
+      "position": {
+        "longitude": -71.2180803,
+        "latitude": 42.6069472
+      },
+      "managingOrganization": {
+        "identifier": {
+          "system": "https://github.com/synthetichealth/synthea",
+          "value": "2836d9ac-c6a6-39d1-8f13-fdf0fc8928f4"
+        },
+        "display": "TEWKSBURY HOSPITAL"
+      }
+    },
+    "request": {
+      "method": "POST",
+      "url": "Location",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|37062c80-1ebb-3ece-ab5e-af0bc290c441"
+    }
+  }, {
+    "fullUrl": "urn:uuid:84d5768f-3a21-3da9-aad2-bbf7a3ae2700",
+    "resource": {
+      "resourceType": "Organization",
+      "id": "84d5768f-3a21-3da9-aad2-bbf7a3ae2700",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization" ]
+      },
+      "extension": [ {
+        "url": "http://synthetichealth.github.io/synthea/utilization-encounters-extension",
+        "valueInteger": 30
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-procedures-extension",
+        "valueInteger": 177
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-labs-extension",
+        "valueInteger": 28
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-prescriptions-extension",
+        "valueInteger": 14
+      } ],
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "84d5768f-3a21-3da9-aad2-bbf7a3ae2700"
+      } ],
+      "active": true,
+      "type": [ {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        } ],
+        "text": "Healthcare Provider"
+      } ],
+      "name": "LOWELL FAMILY MEDICAL CARE PC",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9784530550"
+      } ],
+      "address": [ {
+        "line": [ "817 MERRIMACK ST" ],
+        "city": "LOWELL",
+        "state": "MA",
+        "postalCode": "018543548",
+        "country": "US"
+      } ]
+    },
+    "request": {
+      "method": "POST",
+      "url": "Organization",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|84d5768f-3a21-3da9-aad2-bbf7a3ae2700"
+    }
+  }, {
+    "fullUrl": "urn:uuid:4388e9fe-05d7-36cf-ae9b-f363dd88fb54",
+    "resource": {
+      "resourceType": "Location",
+      "id": "4388e9fe-05d7-36cf-ae9b-f363dd88fb54",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location" ]
+      },
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "4388e9fe-05d7-36cf-ae9b-f363dd88fb54"
+      } ],
+      "status": "active",
+      "name": "LOWELL FAMILY MEDICAL CARE PC",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9784530550"
+      } ],
+      "address": {
+        "line": [ "817 MERRIMACK ST" ],
+        "city": "LOWELL",
+        "state": "MA",
+        "postalCode": "018543548",
+        "country": "US"
+      },
+      "position": {
+        "longitude": -71.32263756223612,
+        "latitude": 42.650296999999995
+      },
+      "managingOrganization": {
+        "identifier": {
+          "system": "https://github.com/synthetichealth/synthea",
+          "value": "84d5768f-3a21-3da9-aad2-bbf7a3ae2700"
+        },
+        "display": "LOWELL FAMILY MEDICAL CARE PC"
+      }
+    },
+    "request": {
+      "method": "POST",
+      "url": "Location",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|4388e9fe-05d7-36cf-ae9b-f363dd88fb54"
+    }
+  }, {
+    "fullUrl": "urn:uuid:c05d73d0-b348-32ce-9fe5-13a720950f37",
+    "resource": {
+      "resourceType": "Organization",
+      "id": "c05d73d0-b348-32ce-9fe5-13a720950f37",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-organization" ]
+      },
+      "extension": [ {
+        "url": "http://synthetichealth.github.io/synthea/utilization-encounters-extension",
+        "valueInteger": 1
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-procedures-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-labs-extension",
+        "valueInteger": 0
+      }, {
+        "url": "http://synthetichealth.github.io/synthea/utilization-prescriptions-extension",
+        "valueInteger": 0
+      } ],
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "c05d73d0-b348-32ce-9fe5-13a720950f37"
+      } ],
+      "active": true,
+      "type": [ {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/organization-type",
+          "code": "prov",
+          "display": "Healthcare Provider"
+        } ],
+        "text": "Healthcare Provider"
+      } ],
+      "name": "URGENT HELP CHELMSFORD PC",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9784467515"
+      } ],
+      "address": [ {
+        "line": [ "45 DRUM HILL RD" ],
+        "city": "CHELMSFORD",
+        "state": "MA",
+        "postalCode": "018241503",
+        "country": "US"
+      } ]
+    },
+    "request": {
+      "method": "POST",
+      "url": "Organization",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|c05d73d0-b348-32ce-9fe5-13a720950f37"
+    }
+  }, {
+    "fullUrl": "urn:uuid:f3a27424-c1f9-344d-a732-ded5d43323ed",
+    "resource": {
+      "resourceType": "Location",
+      "id": "f3a27424-c1f9-344d-a732-ded5d43323ed",
+      "meta": {
+        "profile": [ "http://hl7.org/fhir/us/core/StructureDefinition/us-core-location" ]
+      },
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "f3a27424-c1f9-344d-a732-ded5d43323ed"
+      } ],
+      "status": "active",
+      "name": "URGENT HELP CHELMSFORD PC",
+      "telecom": [ {
+        "system": "phone",
+        "value": "9784467515"
+      } ],
+      "address": {
+        "line": [ "45 DRUM HILL RD" ],
+        "city": "CHELMSFORD",
+        "state": "MA",
+        "postalCode": "018241503",
+        "country": "US"
+      },
+      "position": {
+        "longitude": -71.3615131,
+        "latitude": 42.6255635
+      },
+      "managingOrganization": {
+        "identifier": {
+          "system": "https://github.com/synthetichealth/synthea",
+          "value": "c05d73d0-b348-32ce-9fe5-13a720950f37"
+        },
+        "display": "URGENT HELP CHELMSFORD PC"
+      }
+    },
+    "request": {
+      "method": "POST",
+      "url": "Location",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|f3a27424-c1f9-344d-a732-ded5d43323ed"
+    }
+  }, {
+    "fullUrl": "urn:uuid:bb1ad573-19b8-9cd8-68fb-0e6f684df992",
+    "resource": {
+      "resourceType": "Location",
+      "id": "bb1ad573-19b8-9cd8-68fb-0e6f684df992",
+      "identifier": [ {
+        "system": "https://github.com/synthetichealth/synthea",
+        "value": "bb1ad573-19b8-9cd8-68fb-0e6f684df992"
+      } ],
+      "status": "active",
+      "description": "Patient's Home",
+      "mode": "kind",
+      "physicalType": {
+        "coding": [ {
+          "system": "http://terminology.hl7.org/CodeSystem/location-physical-type",
+          "code": "ho",
+          "display": "House"
+        } ]
+      }
+    },
+    "request": {
+      "method": "POST",
+      "url": "Location",
+      "ifNoneExist": "identifier=https://github.com/synthetichealth/synthea|bb1ad573-19b8-9cd8-68fb-0e6f684df992"
+    }
+  } ]
+}
