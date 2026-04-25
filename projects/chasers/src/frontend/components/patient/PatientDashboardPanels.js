@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import LogoutButton from "@/components/auth/LogoutButton";
 
 const medicationItems = [
   "Lisinopril 10mg - Morning",
@@ -33,12 +34,9 @@ export default function PatientDashboardPanels() {
           <h1 className="text-2xl font-bold text-blue-900">Welcome, Maria!</h1>
           <p className="text-sm text-slate-600">Here is your recovery plan for today.</p>
         </div>
-        <Link
-          href="/"
+        <LogoutButton
           className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100"
-        >
-          Logout
-        </Link>
+        />
       </header>
 
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">

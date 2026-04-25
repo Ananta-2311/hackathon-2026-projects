@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { signInWithPassword } from "@/lib/auth";
+import { getCurrentUserProfile } from "@/lib/api";
 
 export default function DoctorLoginForm() {
   const router = useRouter();
@@ -10,16 +12,20 @@ export default function DoctorLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (email === "doctor@dischargeiq.com" && password === "doctor123") {
+    try {
+      await signInWithPassword({ email, password });
+      const me = await getCurrentUserProfile();
+      if (me?.profile?.role !== "doctor") {
+        setError("This account is not a doctor account.");
+        return;
+      }
       setError("");
       router.push("/doctor-dashboard");
-      return;
+    } catch (err) {
+      setError(err.message || "Login failed");
     }
-
-    setError("Invalid credentials. Try doctor@dischargeiq.com / doctor123.");
   };
 
   return (
@@ -44,7 +50,7 @@ export default function DoctorLoginForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="doctor@dischargeiq.com"
+              placeholder="doctor@dischargeiq.com (Supabase user)"
               required
             />
           </div>
@@ -61,7 +67,7 @@ export default function DoctorLoginForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="doctor123"
+              placeholder="your password"
               required
             />
           </div>

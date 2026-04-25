@@ -13,22 +13,20 @@ export default function Home() {
         <p className="mt-3 text-lg font-medium text-blue-800">
           Preventing readmissions before they happen
         </p>
-        <p className="mx-auto mt-3 max-w-2xl text-slate-600">
-          Choose your portal to continue.
-        </p>
+        <p className="mx-auto mt-3 max-w-2xl text-slate-600">Sign in to continue.</p>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2">
           <Link
-            href="/doctor-login"
+            href="/login"
             className="rounded-2xl border border-blue-200 bg-blue-600 px-6 py-8 text-xl font-semibold text-white transition hover:bg-blue-700"
           >
-            I am a Doctor
+            Go to Login
           </Link>
           <Link
-            href="/patient-login"
+            href="/doctor-login"
             className="rounded-2xl border border-blue-200 bg-blue-50 px-6 py-8 text-xl font-semibold text-blue-900 transition hover:bg-blue-100"
           >
-            I am a Patient
+            Doctor-only Login
           </Link>
         </div>
       </main>

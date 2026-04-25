@@ -1,6 +1,10 @@
-import Link from "next/link";
+"use client";
 
-const patients = [
+import { useEffect, useMemo, useState } from "react";
+import { getPatients, getAlerts } from "@/lib/api";
+import LogoutButton from "@/components/auth/LogoutButton";
+
+const fallbackPatients = [
   {
     id: 1,
     name: "Maria Thompson",
@@ -33,7 +37,7 @@ const patients = [
   },
 ];
 
-const notifications = [
+const fallbackNotifications = [
   "Maria Thompson: chest pain symptom flagged",
   "Daniel Cruz missed evening inhaler yesterday",
   "New symptom report submitted 15 minutes ago",
@@ -46,6 +50,48 @@ const badgeStyles = {
 };
 
 export default function DoctorDashboardPanels({ showLogout = true }) {
+  const [patients, setPatients] = useState(fallbackPatients);
+  const [alerts, setAlerts] = useState([]);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
+      try {
+        const [patientData, alertData] = await Promise.all([
+          getPatients(),
+          getAlerts(),
+        ]);
+        if (!ignore) {
+          const normalizedPatients = patientData.map((patient) => ({
+            ...patient,
+            riskLevel: String(patient.riskLevel || "low").toLowerCase(),
+            reason: patient.reason || patient.notes || "No reason available.",
+            alert: Array.isArray(patient.alerts) && patient.alerts.length > 0 ? patient.alerts[0] : null,
+          }));
+          setPatients(normalizedPatients);
+          setAlerts(alertData);
+        }
+      } catch (error) {
+        // Keep demo fallback data when backend is offline.
+      }
+    }
+
+    loadData();
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const notifications = useMemo(() => {
+    if (alerts.length > 0) {
+      return alerts
+        .slice(0, 5)
+        .map((item) => `${item.patientId}: ${item.message || "High severity alert"}`);
+    }
+    return fallbackNotifications;
+  }, [alerts]);
+
   return (
     <main className="mx-auto max-w-6xl">
       <header className="mb-6 flex items-center justify-between rounded-2xl border border-blue-100 bg-white px-6 py-4 shadow-sm">
@@ -56,12 +102,9 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
           </p>
         </div>
         {showLogout ? (
-          <Link
-            href="/"
+          <LogoutButton
             className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100"
-          >
-            Logout
-          </Link>
+          />
         ) : null}
       </header>
 

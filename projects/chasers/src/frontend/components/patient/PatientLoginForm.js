@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { signInWithPassword } from "@/lib/auth";
+import { getCurrentUserProfile } from "@/lib/api";
 
 export default function PatientLoginForm() {
   const router = useRouter();
@@ -10,16 +12,20 @@ export default function PatientLoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (email === "patient@dischargeiq.com" && password === "patient123") {
+    try {
+      await signInWithPassword({ email, password });
+      const me = await getCurrentUserProfile();
+      if (me?.profile?.role !== "patient") {
+        setError("This account is not a patient account.");
+        return;
+      }
       setError("");
       router.push("/patient-dashboard");
-      return;
+    } catch (err) {
+      setError(err.message || "Login failed");
     }
-
-    setError("Invalid credentials. Try patient@dischargeiq.com / patient123.");
   };
 
   return (
@@ -47,7 +53,7 @@ export default function PatientLoginForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="patient@dischargeiq.com"
+              placeholder="patient@dischargeiq.com (Supabase user)"
               required
             />
           </div>
@@ -64,7 +70,7 @@ export default function PatientLoginForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="mt-1 w-full rounded-xl border border-blue-200 px-4 py-2 text-sm outline-none ring-blue-500 focus:ring-2"
-              placeholder="patient123"
+              placeholder="your password"
               required
             />
           </div>

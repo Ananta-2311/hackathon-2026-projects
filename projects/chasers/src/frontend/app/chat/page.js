@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { sendChatMessage } from "@/lib/api";
+import RoleGate from "@/components/auth/RoleGate";
 
 const initialMessages = [
   {
@@ -15,7 +17,7 @@ const initialMessages = [
   },
 ];
 
-const emergencyKeywords = ["chest pain", "can't breathe", "dizzy"];
+const emergencyKeywords = ["chest pain", "can't breathe", "dizzy", "shortness of breath"];
 
 const getTime = () =>
   new Date().toLocaleTimeString([], {
@@ -28,7 +30,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
 
-  const handleSend = (event) => {
+  const handleSend = async (event) => {
     event.preventDefault();
     const value = input.trim();
     if (!value) return;
@@ -45,23 +47,37 @@ export default function ChatPage() {
       time: getTime(),
     };
 
+    let botReply =
+      "Thanks for sharing, Maria. Keep resting, stay hydrated, and take your medications on schedule.";
+    let emergencyFlag = isEmergency;
+
+    try {
+      const response = await sendChatMessage({ message: value });
+      botReply = response.reply || botReply;
+      emergencyFlag = Boolean(response.alertCreated);
+    } catch (error) {
+      if (isEmergency) {
+        botReply =
+          "I detected urgent symptoms and alerted Dr. Smith. If symptoms are severe, call emergency services now.";
+      }
+    }
+
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
-      text: isEmergency
-        ? "I detected urgent symptoms and alerted Dr. Smith. If symptoms are severe, call emergency services now."
-        : "Thanks for sharing, Maria. Keep resting, stay hydrated, and take your medications on schedule.",
+      text: botReply,
       time: getTime(),
     };
 
     setMessages((prev) => [...prev, patientMessage, botMessage]);
-    setShowEmergencyAlert(isEmergency);
+    setShowEmergencyAlert(emergencyFlag);
     setInput("");
   };
 
   return (
-    <div className="min-h-screen px-6 py-10">
-      <main className="mx-auto flex w-full max-w-4xl flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
+    <RoleGate allowedRoles={["patient"]}>
+      <div className="min-h-screen px-6 py-10">
+        <main className="mx-auto flex w-full max-w-4xl flex-col rounded-2xl border border-blue-100 bg-white shadow-sm">
         <header className="border-b border-blue-100 px-6 py-5">
           <h1 className="text-2xl font-bold text-blue-900">Patient Chat</h1>
           <p className="mt-1 text-sm text-slate-600">
@@ -127,7 +143,8 @@ export default function ChatPage() {
             Back to Patient Dashboard
           </Link>
         </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </RoleGate>
   );
 }
