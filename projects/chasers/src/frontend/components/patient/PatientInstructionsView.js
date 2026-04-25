@@ -1,49 +1,41 @@
 "use client";
 
 import { useState } from "react";
+import { useEffect } from "react";
+import { simplifyInstructions } from "@/lib/api";
 
 const instructionsByLanguage = {
   en: [
     {
-      emoji: "💊",
       text: "Take your blood pressure medication every morning after breakfast.",
     },
     {
-      emoji: "💧",
       text: "Drink at least 6-8 glasses of water unless your doctor advised fluid restriction.",
     },
     {
-      emoji: "🚶",
       text: "Walk for 15-20 minutes daily and avoid heavy lifting for one week.",
     },
     {
-      emoji: "📅",
       text: "Schedule your follow-up visit within 3 days of discharge.",
     },
     {
-      emoji: "📞",
       text: "Call your care team if you notice swelling, dizziness, or worsening shortness of breath.",
     },
   ],
   es: [
     {
-      emoji: "💊",
       text: "Toma tu medicamento para la presion arterial cada manana despues del desayuno.",
     },
     {
-      emoji: "💧",
       text: "Bebe de 6 a 8 vasos de agua al dia, a menos que tu medico haya recomendado restriccion de liquidos.",
     },
     {
-      emoji: "🚶",
       text: "Camina de 15 a 20 minutos al dia y evita levantar objetos pesados durante una semana.",
     },
     {
-      emoji: "📅",
       text: "Programa tu cita de seguimiento dentro de los 3 dias despues del alta.",
     },
     {
-      emoji: "📞",
       text: "Llama a tu equipo medico si notas hinchazon, mareo o falta de aire que empeora.",
     },
   ],
@@ -51,7 +43,52 @@ const instructionsByLanguage = {
 
 export default function PatientInstructionsView() {
   const [language, setLanguage] = useState("en");
-  const translatedInstructions = instructionsByLanguage[language];
+  const [translatedInstructions, setTranslatedInstructions] = useState(
+    instructionsByLanguage.en
+  );
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadSimplifiedInstructions() {
+      const baseText = instructionsByLanguage[language]
+        .map((item, index) => `${index + 1}. ${item.text}`)
+        .join("\n");
+
+      try {
+        const response = await simplifyInstructions({
+          originalInstructions: baseText,
+          language,
+        });
+
+        const lines = String(response.simplifiedInstructions || "")
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        if (!ignore && lines.length > 0) {
+          const mapped = lines.map((line, index) => ({
+            emoji: instructionsByLanguage[language][index % instructionsByLanguage[language].length].emoji,
+            text: line.replace(/^\d+[\).\s-]*/, ""),
+          }));
+          setTranslatedInstructions(mapped);
+          return;
+        }
+      } catch (error) {
+        // Keep local mock instructions when backend is unavailable.
+      }
+
+      if (!ignore) {
+        setTranslatedInstructions(instructionsByLanguage[language]);
+      }
+    }
+
+    loadSimplifiedInstructions();
+
+    return () => {
+      ignore = true;
+    };
+  }, [language]);
 
   return (
     <main className="mx-auto w-full max-w-4xl space-y-6">
@@ -76,12 +113,7 @@ export default function PatientInstructionsView() {
             className="rounded-2xl border border-blue-100 bg-white p-5 shadow-sm"
           >
             <p className="font-semibold text-blue-800">Instruction {index + 1}</p>
-            <p className="mt-1 text-slate-700">
-              <span className="mr-2 text-xl" role="img" aria-label="instruction icon">
-                {instruction.emoji}
-              </span>
-              {instruction.text}
-            </p>
+            <p className="mt-1 text-slate-700">{instruction.text}</p>
           </article>
         ))}
       </section>
