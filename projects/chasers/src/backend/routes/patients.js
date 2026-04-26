@@ -20,14 +20,28 @@ function applyRisk(patient = {}) {
 }
 
 function mapPatientForResponse(patient = {}) {
+  let parsedReasons = [];
+  if (Array.isArray(patient.riskReasons)) {
+    parsedReasons = patient.riskReasons;
+  } else if (typeof patient.risk_reasons === "string" && patient.risk_reasons.trim()) {
+    try {
+      const candidate = JSON.parse(patient.risk_reasons);
+      parsedReasons = Array.isArray(candidate) ? candidate : [];
+    } catch (_error) {
+      parsedReasons = [];
+    }
+  } else if (Array.isArray(patient.reasons)) {
+    parsedReasons = patient.reasons;
+  }
+
   return {
     ...patient,
     risk_score: patient.risk_score ?? patient.riskScore ?? patient.prediction_percentage ?? patient.readmission_probability ?? 0,
     risk_level: patient.risk_level ?? patient.riskLevel ?? "Medium",
     prediction_percentage:
       patient.prediction_percentage ?? patient.risk_score ?? patient.riskScore ?? patient.readmission_probability ?? 0,
-    riskReasons: patient.riskReasons || patient.reasons || [],
-    followUpSuggestion: patient.followUpSuggestion || "",
+    riskReasons: parsedReasons,
+    followUpSuggestion: patient.followUpSuggestion || patient.follow_up_suggestion || "",
   };
 }
 
