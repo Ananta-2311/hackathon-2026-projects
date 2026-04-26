@@ -11,6 +11,7 @@ const chatRoute = require("./routes/chat");
 const alertsRoute = require("./routes/alerts");
 const authRoute = require("./routes/auth");
 const prescriptionsRoute = require("./routes/prescriptions");
+const dischargeSyncRoute = require("./routes/dischargeSync");
 const { mockPatients } = require("./data/mockPatients");
 
 function createApp() {
@@ -43,6 +44,8 @@ function createApp() {
     patients: mockPatients.map((patient) => ({ ...patient })),
     alerts: [],
     chats: {},
+    dischargeInstructions: {},
+    dischargeNotes: {},
   };
 
   app.get("/", (req, res) => {
@@ -64,6 +67,7 @@ function createApp() {
   app.use("/api/alerts", alertsRoute);
   app.use("/api/auth", authRoute);
   app.use("/api/prescriptions", prescriptionsRoute);
+  app.use("/api", dischargeSyncRoute);
 
   return app;
 }

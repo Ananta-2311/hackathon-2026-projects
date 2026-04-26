@@ -323,6 +323,19 @@ def get_patients() -> dict[str, Any]:
     return {"patients": patients}
 
 
+@app.get("/patients/{patient_id}")
+def get_patient_by_id(patient_id: str) -> dict[str, Any]:
+    patient_rows = _safe_select("patients", eq_filters={"id": patient_id}, limit=1)
+    if patient_rows:
+        return _map_patient_to_dashboard(patient_rows[0])
+
+    # Keep doctor UI working even when Supabase is unavailable.
+    fallback_match = next((row for row in _fallback_patients() if str(row.get("id")) == str(patient_id)), None)
+    if fallback_match:
+        return _map_patient_to_dashboard(fallback_match)
+    return _maria_dashboard_fallback()["patient"]
+
+
 @app.get("/alerts")
 def get_alerts() -> dict[str, Any]:
     alerts = _safe_select("alerts", order_field="created_at", desc=True)

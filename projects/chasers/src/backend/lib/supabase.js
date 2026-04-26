@@ -14,8 +14,9 @@ const supabaseAuthClient =
     ? createClient(supabaseUrl, anonKey, { auth: { persistSession: false } })
     : null;
 
-function ensureSupabase(res) {
-  if (!supabaseAdmin || !supabaseAuthClient) {
+function ensureSupabase(res, options = {}) {
+  const { requireAuthClient = false } = options;
+  if (!supabaseAdmin || (requireAuthClient && !supabaseAuthClient)) {
     res.status(500).json({
       message:
         "Supabase is not configured. Set SUPABASE_URL, SUPABASE_ANON_KEY, and SUPABASE_SERVICE_ROLE_KEY.",

@@ -7,6 +7,16 @@ const router = express.Router();
 router.get("/", requireAuth, requireRole("doctor"), async (req, res) => {
   if (!supabaseAdmin) return res.json(req.app.locals.mockStore?.alerts || []);
   if (!ensureSupabase(res)) return;
+  if (req.profile.demoAuth) {
+    const { data, error } = await supabaseAdmin
+      .from("alerts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      return res.status(500).json({ message: "Failed to load alerts", error: error.message });
+    }
+    return res.json(data || []);
+  }
 
   const { data: assignedPatients, error: patientsError } = await supabaseAdmin
     .from("patients")

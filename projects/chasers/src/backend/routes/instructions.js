@@ -17,8 +17,20 @@ const languageLabels = {
   hi: "Hindi",
 };
 
+function getLocalInstructionStore(req) {
+  if (!req.app.locals.mockStore) req.app.locals.mockStore = {};
+  if (!req.app.locals.mockStore.dischargeInstructions) {
+    req.app.locals.mockStore.dischargeInstructions = {};
+  }
+  return req.app.locals.mockStore.dischargeInstructions;
+}
+
 router.get("/:patientId", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
+    const localStore = getLocalInstructionStore(req);
+    const localRows = localStore[String(req.params.patientId)] || [];
+    if (localRows.length) return res.json(localRows);
+
     const patient = (req.app.locals.mockStore?.patients || []).find(
       (item) => item.id === String(req.params.patientId)
     );
@@ -37,12 +49,13 @@ router.get("/:patientId", requireAuth, async (req, res) => {
 
   const { data: patient } = await supabaseAdmin
     .from("patients")
-    .select("id, profile_id, assigned_doctor_id")
+    .select("*")
     .eq("id", patientId)
     .single();
   if (!patient) return res.status(404).json({ message: "Patient not found" });
 
   const canRead =
+    req.profile.demoAuth ||
     (req.profile.role === "doctor" && patient.assigned_doctor_id === req.profile.id) ||
     (req.profile.role === "patient" && patient.profile_id === req.profile.id);
   if (!canRead) return res.status(403).json({ message: "Forbidden" });
@@ -53,7 +66,13 @@ router.get("/:patientId", requireAuth, async (req, res) => {
     .eq("patient_id", patientId)
     .order("created_at", { ascending: false });
 
-  if (error) return res.status(500).json({ message: "Failed to load instructions", error: error.message });
+  if (error) {
+    if (String(error.message || "").includes("Could not find the table")) {
+      const localStore = getLocalInstructionStore(req);
+      return res.json(localStore[String(patientId)] || []);
+    }
+    return res.status(500).json({ message: "Failed to load instructions", error: error.message });
+  }
   return res.json(data || []);
 });
 
@@ -83,7 +102,7 @@ router.post("/simplify", requireAuth, async (req, res) => {
     } else if (patientId && supabaseAdmin) {
       const { data: patient, error: patientError } = await supabaseAdmin
         .from("patients")
-        .select("id, profile_id, assigned_doctor_id")
+        .select("*")
         .eq("id", patientId)
         .single();
 
@@ -92,18 +111,33 @@ router.post("/simplify", requireAuth, async (req, res) => {
       }
 
       const canWrite =
-        (req.profile.role === "doctor" && patient.assigned_doctor_id === req.profile.id) ||
+        req.profile.demoAuth ||
+        (req.profile.role === "doctor" &&
+          (!patient.assigned_doctor_id || patient.assigned_doctor_id === req.profile.id)) ||
         (req.profile.role === "patient" && patient.profile_id === req.profile.id);
       if (!canWrite) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
-      await supabaseAdmin.from("discharge_instructions").insert({
+      const { error: insertError } = await supabaseAdmin.from("discharge_instructions").insert({
         patient_id: patientId,
         original_text: originalInstructions,
         simplified_text: simplifiedInstructions,
         language,
       });
+      if (insertError && String(insertError.message || "").includes("Could not find the table")) {
+        const localStore = getLocalInstructionStore(req);
+        const row = {
+          patient_id: patientId,
+          original_text: originalInstructions,
+          simplified_text: simplifiedInstructions,
+          translated_text: null,
+          language,
+          created_at: new Date().toISOString(),
+        };
+        if (!localStore[String(patientId)]) localStore[String(patientId)] = [];
+        localStore[String(patientId)].unshift(row);
+      }
     }
 
     res.json({
@@ -164,7 +198,65 @@ router.post("/send", requireAuth, async (req, res) => {
     });
   }
 
-  return res.status(501).json({ message: "Supabase mode send not implemented in this endpoint." });
+  const { data: patient, error: patientError } = await supabaseAdmin
+    .from("patients")
+    .select("*")
+    .eq("id", patientId)
+    .single();
+  if (patientError || !patient) {
+    return res.status(404).json({ message: "Patient not found" });
+  }
+
+  const canWrite =
+    req.profile.demoAuth ||
+    (req.profile.role === "doctor" &&
+      (!patient.assigned_doctor_id || patient.assigned_doctor_id === req.profile.id));
+  if (!canWrite) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  const { error: insertError } = await supabaseAdmin.from("discharge_instructions").insert({
+    patient_id: patientId,
+    original_text: originalText,
+    simplified_text: simplifiedText,
+    translated_text: translatedText || null,
+    language,
+  });
+
+  if (insertError && !String(insertError.message || "").includes("Could not find the table")) {
+    return res.status(500).json({ message: "Failed to send instructions", error: insertError.message });
+  }
+
+  if (insertError && String(insertError.message || "").includes("Could not find the table")) {
+    const localStore = getLocalInstructionStore(req);
+    const row = {
+      patient_id: patientId,
+      original_text: originalText,
+      simplified_text: simplifiedText,
+      translated_text: translatedText || null,
+      language,
+      created_at: new Date().toISOString(),
+    };
+    if (!localStore[String(patientId)]) localStore[String(patientId)] = [];
+    localStore[String(patientId)].unshift(row);
+  }
+
+  // Create an informational alert that the patient has new instructions.
+  await supabaseAdmin.from("alerts").insert({
+    patient_id: patientId,
+    severity: "Info",
+    message: "New discharge instructions were sent to the patient.",
+    status: "open",
+  });
+
+  return res.status(201).json({
+    patientId,
+    sent: true,
+    language,
+    originalText,
+    simplifiedText,
+    translatedText,
+  });
 });
 
 router.post("/", requireAuth, async (req, res) => {

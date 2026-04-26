@@ -2,8 +2,21 @@ const express = require("express");
 const { supabaseAdmin, ensureSupabase } = require("../lib/supabase");
 const { requireAuth } = require("../middleware/auth");
 const { mockPatients } = require("../data/mockPatients");
+const { predictRisk } = require("../services/riskService");
 
 const router = express.Router();
+
+function applyRisk(patient = {}) {
+  const prediction = predictRisk(patient);
+  return {
+    ...patient,
+    risk_score: prediction.riskScore,
+    risk_level: prediction.riskLevel,
+    prediction_percentage: prediction.riskScore,
+    riskReasons: prediction.reasons,
+    followUpSuggestion: prediction.recommendation,
+  };
+}
 
 router.get("/", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
@@ -36,7 +49,9 @@ router.get("/", requireAuth, async (req, res) => {
     ascending: false,
   });
 
-  if (req.profile.role === "doctor") {
+  if (req.profile.demoAuth) {
+    // In demo header-auth mode, return full list to keep dashboard functional.
+  } else if (req.profile.role === "doctor") {
     query = query.eq("assigned_doctor_id", req.profile.id);
   } else if (req.profile.role === "patient") {
     query = query.eq("profile_id", req.profile.id);
@@ -48,7 +63,7 @@ router.get("/", requireAuth, async (req, res) => {
   if (error) {
     return res.status(500).json({ message: "Failed to load patients", error: error.message });
   }
-  return res.json(data || []);
+  return res.json((data || []).map((patient) => applyRisk(patient)));
 });
 
 router.get("/:id", requireAuth, async (req, res) => {
@@ -61,11 +76,22 @@ router.get("/:id", requireAuth, async (req, res) => {
   if (!ensureSupabase(res)) return;
 
   const { id } = req.params;
-  const { data: patient, error } = await supabaseAdmin
+  let { data: patient, error } = await supabaseAdmin
     .from("patients")
     .select("*, discharge_instructions(*), chat_messages(*), alerts(*)")
     .eq("id", id)
     .single();
+
+  // Fallback when relational selects are not configured in Supabase.
+  if (error || !patient) {
+    const fallbackResponse = await supabaseAdmin
+      .from("patients")
+      .select("*")
+      .eq("id", id)
+      .single();
+    patient = fallbackResponse.data;
+    error = fallbackResponse.error;
+  }
 
   if (error || !patient) {
     return res.status(404).json({ message: "Patient not found" });
@@ -74,11 +100,11 @@ router.get("/:id", requireAuth, async (req, res) => {
   const isDoctorOwner =
     req.profile.role === "doctor" && patient.assigned_doctor_id === req.profile.id;
   const isPatientOwner = req.profile.role === "patient" && patient.profile_id === req.profile.id;
-  if (!isDoctorOwner && !isPatientOwner) {
+  if (!req.profile.demoAuth && !isDoctorOwner && !isPatientOwner) {
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  return res.json(patient);
+  return res.json(applyRisk(patient));
 });
 
 module.exports = router;

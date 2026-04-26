@@ -1,20 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { sendChatMessage } from "@/lib/api";
+import { getPatientDashboardData, sendChatMessage } from "@/lib/api";
 
-const initialMessages = [
-  {
-    id: 1,
-    role: "bot",
-    text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling today?",
-    time: new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  },
-];
+const initialMessages = [];
 
 const emergencyKeywords = [
   "chest pain",
@@ -38,6 +28,42 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
   const [isBotTyping, setIsBotTyping] = useState(false);
+  const [patientId, setPatientId] = useState("");
+  const [patientName, setPatientName] = useState("Maria");
+
+  useEffect(() => {
+    getPatientDashboardData()
+      .then((data) => {
+        const id = data?.patient?.id || "";
+        const name = data?.patient?.name || "Maria";
+        setPatientId(id);
+        setPatientName(name);
+        setMessages([
+          {
+            id: 1,
+            role: "bot",
+            text: `Hi ${name}, I am your DischargeIQ assistant. How are you feeling today?`,
+            time: getTime(),
+          },
+        ]);
+      })
+      .catch(() => {
+        setMessages([
+          {
+            id: 1,
+            role: "bot",
+            text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling today?",
+            time: getTime(),
+          },
+        ]);
+      });
+  }, []);
+
+  const handleEmergencyCall = () => {
+    if (typeof window !== "undefined") {
+      window.location.href = "tel:911";
+    }
+  };
 
   const handleSend = async (event) => {
     event.preventDefault();
@@ -64,7 +90,11 @@ export default function ChatPage() {
     let botText =
       "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.";
     try {
-      const response = await sendChatMessage({ message: value });
+      const response = await sendChatMessage({
+        patient_id: patientId || undefined,
+        patient_name: patientName,
+        message: value,
+      });
       botText = response.reply || botText;
       setShowEmergencyAlert(Boolean(response.alertCreated));
     } catch (_error) {
@@ -76,9 +106,7 @@ export default function ChatPage() {
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
-      text: isEmergency
-        ? "This may be an emergency. Please call 911 or go to the ER now. Your doctor has been notified."
-        : botText,
+      text: botText,
       time: getTime(),
     };
 
@@ -100,8 +128,15 @@ export default function ChatPage() {
         </header>
 
         {showEmergencyAlert ? (
-          <div className="mx-5 mt-4 animate-pulse rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
-            🚨 Emergency detected! Alerting Dr. Smith now...
+          <div className="mx-5 mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
+            <p className="animate-pulse">🚨 Emergency detected! Alerting Dr. Smith now...</p>
+            <button
+              type="button"
+              onClick={handleEmergencyCall}
+              className="mt-2 rounded-lg bg-red-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-800"
+            >
+              Call 911 Now
+            </button>
           </div>
         ) : null}
 

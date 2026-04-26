@@ -6,15 +6,32 @@ async function requireAuth(req, res, next) {
     const role = String(headerRole || "doctor").toLowerCase();
     const userId = req.headers["x-user-id"] || (role === "patient" ? "patient-1" : "doctor-1");
     req.user = { id: String(userId), email: `${role}@dischargeiq.dev` };
-    req.profile = { id: String(userId), role, full_name: role === "patient" ? "Maria Thompson" : "Dr. Smith" };
+    req.profile = {
+      id: String(userId),
+      role,
+      full_name: role === "patient" ? "Maria Thompson" : "Dr. Smith",
+      demoAuth: true,
+    };
     return next();
   }
 
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
+  // Demo-safe fallback: if local UI didn't perform Supabase login yet, still allow
+  // x-user headers so the hackathon flow can run end-to-end.
   if (!token) {
-    return res.status(401).json({ message: "Missing auth token" });
+    const headerRole = req.headers["x-user-role"] || req.headers["x-test-role"];
+    const role = String(headerRole || "doctor").toLowerCase();
+    const userId = req.headers["x-user-id"] || (role === "patient" ? "patient-1" : "doctor-1");
+    req.user = { id: String(userId), email: `${role}@dischargeiq.dev` };
+    req.profile = {
+      id: String(userId),
+      role,
+      full_name: role === "patient" ? "Maria Thompson" : "Dr. Smith",
+      demoAuth: true,
+    };
+    return next();
   }
 
   const { data, error } = await supabaseAuthClient.auth.getUser(token);

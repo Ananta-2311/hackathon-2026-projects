@@ -1,6 +1,7 @@
 const express = require("express");
 const { supabaseAdmin, ensureSupabase } = require("../lib/supabase");
 const { requireAuth, requireRole } = require("../middleware/auth");
+const { generateChatReplyWithAI } = require("../services/openaiService");
 
 const router = express.Router();
 
@@ -20,6 +21,23 @@ function containsRedFlag(message = "") {
   return redFlagSymptoms.some((keyword) => normalized.includes(keyword));
 }
 
+function buildFriendlyReply({ message = "", patientAge = null, emergency = false }) {
+  if (emergency) {
+    return "Your symptoms may be serious. Please call 911 now or go to the nearest ER. I already alerted your doctor.";
+  }
+  const normalized = String(message || "").toLowerCase();
+  if (normalized.includes("confused") || normalized.includes("don't understand")) {
+    return "You are doing the right thing by asking. I can explain in simple steps. Tell me which part is confusing and I will make it easier.";
+  }
+  if (normalized.includes("pain")) {
+    return "I am sorry you are hurting. Please rest, take your prescribed pain medicine exactly as instructed, and tell your doctor if the pain gets worse or does not improve.";
+  }
+  if (Number(patientAge) >= 65) {
+    return "Thank you for the update. Please keep steps simple today: take your medicines on time, drink water, rest, and call your doctor if breathing, pain, or dizziness gets worse.";
+  }
+  return "Thanks for the update. Keep resting, stay hydrated, and continue your medications as prescribed. If symptoms get worse, contact your care team right away.";
+}
+
 router.get("/history/:patientId", requireAuth, async (req, res) => {
   if (!supabaseAdmin) return res.json([]);
   if (!ensureSupabase(res)) return;
@@ -27,12 +45,13 @@ router.get("/history/:patientId", requireAuth, async (req, res) => {
 
   const { data: patient } = await supabaseAdmin
     .from("patients")
-    .select("id, profile_id, assigned_doctor_id")
+    .select("*")
     .eq("id", patientId)
     .single();
   if (!patient) return res.status(404).json({ message: "Patient not found" });
 
   const canRead =
+    req.profile.demoAuth ||
     (req.profile.role === "doctor" && patient.assigned_doctor_id === req.profile.id) ||
     (req.profile.role === "patient" && patient.profile_id === req.profile.id);
   if (!canRead) return res.status(403).json({ message: "Forbidden" });
@@ -47,26 +66,65 @@ router.get("/history/:patientId", requireAuth, async (req, res) => {
 });
 
 router.post("/", requireAuth, requireRole("patient"), async (req, res) => {
-  const { message = "" } = req.body || {};
+  const { message = "", patient_id: requestedPatientId = "", patient_name: requestedPatientName = "" } = req.body || {};
   let patientId = "1";
+  let patientName = requestedPatientName || "";
   if (supabaseAdmin) {
     if (!ensureSupabase(res)) return;
-    const { data: patient } = await supabaseAdmin
-      .from("patients")
-      .select("id")
-      .eq("profile_id", req.profile.id)
-      .single();
+    if (req.profile.demoAuth) {
+      if (requestedPatientId) {
+        patientId = String(requestedPatientId);
+      } else {
+        const { data: mariaPatient } = await supabaseAdmin
+          .from("patients")
+          .select("id, name")
+          .eq("email", "patient@dischargeiq.com")
+          .limit(1)
+          .single();
+        if (mariaPatient?.id) {
+          patientId = String(mariaPatient.id);
+          patientName = patientName || mariaPatient.name || "";
+        } else {
+          const { data: firstPatient } = await supabaseAdmin
+            .from("patients")
+            .select("id, name")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+          if (firstPatient?.id) {
+            patientId = String(firstPatient.id);
+            patientName = patientName || firstPatient.name || "";
+          }
+        }
+      }
+    } else {
+      const { data: patient } = await supabaseAdmin
+        .from("patients")
+        .select("id, name")
+        .eq("profile_id", req.profile.id)
+        .single();
 
-    if (!patient) {
-      return res.status(404).json({ message: "Patient record not found for logged-in user" });
+      if (!patient) {
+        return res.status(404).json({ message: "Patient record not found for logged-in user" });
+      }
+      patientId = patient.id;
+      patientName = patientName || patient?.name || "";
     }
-    patientId = patient.id;
   }
   const alertCreated = containsRedFlag(message);
 
   let alert = null;
-  let reply =
-    "Thanks for sharing. Keep resting, stay hydrated, and continue your medications as prescribed.";
+  let patientAge = null;
+
+  if (supabaseAdmin) {
+    const { data: patient } = await supabaseAdmin
+      .from("patients")
+      .select("age, name")
+      .eq("id", patientId)
+      .single();
+    patientAge = patient?.age ?? null;
+    patientName = patientName || patient?.name || "";
+  }
 
   if (alertCreated) {
     alert = {
@@ -97,8 +155,29 @@ router.post("/", requireAuth, requireRole("patient"), async (req, res) => {
       };
       req.app.locals.mockStore.alerts.unshift(alert);
     }
-    reply =
-      "This may be an emergency. Please call emergency services now or go to the ER. I have alerted your doctor with your exact message.";
+  }
+  let recentMessages = [];
+  if (supabaseAdmin) {
+    const recent = await supabaseAdmin
+      .from("chat_messages")
+      .select("sender, message, created_at")
+      .eq("patient_id", patientId)
+      .order("created_at", { ascending: false })
+      .limit(8);
+    recentMessages = Array.isArray(recent.data) ? recent.data.slice().reverse() : [];
+  }
+
+  let reply =
+    (await generateChatReplyWithAI({
+      message,
+      age: patientAge,
+      patientName,
+      recentMessages,
+      emergency: alertCreated,
+    }).catch(() => null)) || null;
+
+  if (!reply) {
+    reply = buildFriendlyReply({ message, patientAge, emergency: alertCreated });
   }
 
   if (supabaseAdmin) {

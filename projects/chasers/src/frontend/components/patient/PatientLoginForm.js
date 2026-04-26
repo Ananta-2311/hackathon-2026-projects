@@ -13,13 +13,25 @@ export default function PatientLoginForm() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (email === "patient@dischargeiq.com" && password === "patient123") {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const allowed = [
+      "patient@dischargeiq.com",
+      "john@dischargeiq.com",
+      "aisha@dischargeiq.com",
+    ];
+
+    if (allowed.includes(normalizedEmail) && (password === "patient123" || password === "password123")) {
       setError("");
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("demoPatientEmail", normalizedEmail);
+      }
       router.push("/patient-dashboard");
       return;
     }
 
-    setError("Invalid credentials. Try patient@dischargeiq.com / patient123.");
+    setError(
+      "Invalid credentials. Use patient@dischargeiq.com, john@dischargeiq.com, or aisha@dischargeiq.com with patient123."
+    );
   };
 
   return (
