@@ -9,8 +9,6 @@ const API_BASE_URLS = [
   viteBaseUrl,
   process.env.NEXT_PUBLIC_API_BASE_URL,
   "http://localhost:5001/api",
-  "http://127.0.0.1:8000",
-  "http://localhost:8000",
 ].filter(Boolean);
 
 const API_BASE_URL = API_BASE_URLS[0];
@@ -22,13 +20,14 @@ async function request(path, options = {}) {
 
   for (const baseUrl of API_BASE_URLS) {
     try {
+      const mergedHeaders = {
+        "Content-Type": "application/json",
+        ...authHeaders,
+        ...(options.headers || {}),
+      };
       const response = await fetch(`${baseUrl}${path}`, {
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders,
-          ...(options.headers || {}),
-        },
         ...options,
+        headers: mergedHeaders,
         cache: "no-store",
       });
 
@@ -268,15 +267,39 @@ export function getPatientDashboardData() {
         });
       });
     })
-    .then((dashboard) => {
+    .then(async (dashboard) => {
       const patient = normalizePatient(dashboard?.patient || {});
       const reminders =
         Array.isArray(patient?.reminders) && patient.reminders.length
           ? patient.reminders
           : extractPrescriptionReminders(patient?.prescription || "");
 
+      // Out-of-box safety: read directly from discharge-notes (same source doctor send uses),
+      // then prefer the latest meaningful note over dashboard-provided note.
+      const patientId = String(patient?.id || "1");
+      let directNotes = [];
+      try {
+        const direct = await request(`/discharge-notes?patient_id=${encodeURIComponent(patientId)}`, {
+          headers: { "x-user-role": "patient", "x-user-id": (await getCurrentUserId()) || "patient-1" },
+        });
+        directNotes = Array.isArray(direct?.notes) ? direct.notes : [];
+      } catch (_error) {
+        directNotes = [];
+      }
+
+      const mappedDirect = directNotes.map((note) => ({
+        originalNote: note?.originalNote ?? note?.original_note ?? "",
+        simplifiedNote: note?.simplifiedNote ?? note?.simplified_note ?? "",
+        createdAt: note?.createdAt ?? note?.created_at ?? null,
+      }));
+      const meaningfulDirect = mappedDirect.find(
+        (note) => String(note?.originalNote || "").trim() || String(note?.simplifiedNote || "").trim()
+      );
+
       return {
         ...dashboard,
+        latestNote: meaningfulDirect || dashboard?.latestNote || { originalNote: "", simplifiedNote: "", createdAt: null },
+        previousNotes: mappedDirect.length ? mappedDirect : dashboard?.previousNotes || [],
         patient: { ...patient, reminders },
       };
     })

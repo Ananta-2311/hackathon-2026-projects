@@ -6,6 +6,7 @@ const {
   simplifyInstructionsWithAI,
   fallbackSimplify,
 } = require("../services/openaiService");
+const { shouldUseLocalSql, insertDischargeNote } = require("../lib/localSql");
 
 const router = express.Router();
 const languageLabels = {
@@ -81,15 +82,18 @@ router.post("/simplify", requireAuth, async (req, res) => {
     const { originalInstructions = "", language = "en", patientId = null } = req.body || {};
 
     let simplifiedInstructions = null;
+    let method = "fallback";
     if (hasOpenAIKey()) {
-      simplifiedInstructions = await simplifyInstructionsWithAI(
-        originalInstructions,
-        language
-      );
+      simplifiedInstructions = await Promise.race([
+        simplifyInstructionsWithAI(originalInstructions, language),
+        new Promise((resolve) => setTimeout(() => resolve(null), 12000)),
+      ]);
+      if (simplifiedInstructions) method = "openai";
     }
 
     if (!simplifiedInstructions) {
       simplifiedInstructions = fallbackSimplify(originalInstructions, language);
+      method = "fallback";
     }
 
     if (patientId && !supabaseAdmin) {
@@ -98,6 +102,22 @@ router.post("/simplify", requireAuth, async (req, res) => {
       if (patient) {
         patient.doctorNotes = originalInstructions;
         patient.simplifiedInstructions = simplifiedInstructions;
+      }
+      if (shouldUseLocalSql()) {
+        insertDischargeNote({
+          patientId: String(patientId),
+          originalNote: originalInstructions,
+          simplifiedNote: simplifiedInstructions,
+          language,
+        });
+        if (String(patientId) !== "1") {
+          insertDischargeNote({
+            patientId: "1",
+            originalNote: originalInstructions,
+            simplifiedNote: simplifiedInstructions,
+            language,
+          });
+        }
       }
     } else if (patientId && supabaseAdmin) {
       const { data: patient, error: patientError } = await supabaseAdmin
@@ -138,12 +158,21 @@ router.post("/simplify", requireAuth, async (req, res) => {
         if (!localStore[String(patientId)]) localStore[String(patientId)] = [];
         localStore[String(patientId)].unshift(row);
       }
+
+      // Keep patient portal source-of-truth in sync with simplify output.
+      await supabaseAdmin.from("discharge_notes").insert({
+        patient_id: patientId,
+        original_note: originalInstructions,
+        simplified_note: simplifiedInstructions,
+        language,
+      });
     }
 
     res.json({
       originalInstructions,
       simplifiedInstructions,
       language,
+      method,
     });
   } catch (error) {
     res.status(500).json({

@@ -22,32 +22,64 @@ async function simplifyInstructionsWithAI(originalInstructions, language = "en")
   const openai = getClient();
   if (!openai) return null;
 
-  const response = await openai.responses.create({
-    model: "gpt-4.1-mini",
-    input: [
-      {
-        role: "system",
-        content:
-          "You simplify medical discharge instructions for patients at roughly a 6th grade reading level. Keep safety-critical details.",
-      },
-      {
-        role: "user",
-        content: `Language: ${language}\n\nOriginal instructions:\n${originalInstructions}\n\nReturn only the simplified instructions.`,
-      },
-    ],
-  });
+  try {
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+      input: [
+        {
+          role: "system",
+          content:
+            "You simplify medical discharge instructions for patients at roughly a 6th grade reading level. Keep safety-critical details, medicine timing, warning signs, and follow-up steps.",
+        },
+        {
+          role: "user",
+          content: `Language: ${language}\n\nOriginal instructions:\n${originalInstructions}\n\nReturn only the simplified instructions.`,
+        },
+      ],
+    });
 
-  return response.output_text?.trim() || null;
+    return response.output_text?.trim() || null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function toSimpleSentence(text = "") {
+  return String(text)
+    .replace(/\badminister\b/gi, "give")
+    .replace(/\bdiscontinue\b/gi, "stop")
+    .replace(/\bmonitor\b/gi, "watch for")
+    .replace(/\bdyspnea\b/gi, "trouble breathing")
+    .replace(/\bPRN\b/g, "as needed")
+    .replace(/\bsodium\b/gi, "salt")
+    .replace(/\bedema\b/gi, "swelling")
+    .replace(/\bhypertension\b/gi, "high blood pressure")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function fallbackSimplify(originalInstructions, language = "en") {
-  if (!originalInstructions) return "Please take your medicines, rest, drink water, and call your doctor if symptoms get worse.";
-
-  if (language === "es") {
-    return "Toma tus medicinas a tiempo, descansa, toma agua y llama a tu doctor si te sientes peor.";
+  const raw = String(originalInstructions || "").trim();
+  if (!raw) {
+    return "Take your medicines on time, rest, drink water, and call your doctor if you feel worse.";
   }
 
-  return "Take your medicines on time, rest, drink water, and call your doctor if you feel worse.";
+  if (language === "es") {
+    return "Sigue estas instrucciones: toma tus medicinas a tiempo, descansa, toma agua y llama a tu doctor si te sientes peor.";
+  }
+
+  const parts = raw
+    .split(/\n|[.;](?:\s+|$)/)
+    .map((part) => toSimpleSentence(part))
+    .filter(Boolean)
+    .slice(0, 6);
+
+  if (!parts.length) {
+    return "Take your medicines on time, rest, drink water, and call your doctor if you feel worse.";
+  }
+
+  const numbered = parts.map((part, index) => `${index + 1}. ${part}`).join(" ");
+  return `Follow these steps: ${numbered}`;
 }
 
 async function generateChatReplyWithAI({

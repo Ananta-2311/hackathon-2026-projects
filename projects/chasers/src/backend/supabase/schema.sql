@@ -14,6 +14,7 @@ create table if not exists profiles (
 create table if not exists patients (
   id uuid primary key default gen_random_uuid(),
   profile_id uuid references profiles(id) on delete set null,
+  assigned_doctor_id uuid references profiles(id) on delete set null,
 
   name text,
   age int,
@@ -34,6 +35,7 @@ create table if not exists patients (
   patient_report text,
 
   risk_level text,
+  risk_score float,
   readmission_probability float,
   prediction_percentage float,
 
@@ -44,6 +46,9 @@ create table if not exists patients (
 
   created_at timestamp default now()
 );
+
+alter table patients add column if not exists assigned_doctor_id uuid references profiles(id) on delete set null;
+alter table patients add column if not exists risk_score float;
 
 -- ALERTS
 create table if not exists alerts (

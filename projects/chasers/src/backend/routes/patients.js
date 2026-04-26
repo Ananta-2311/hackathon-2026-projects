@@ -3,6 +3,7 @@ const { supabaseAdmin, ensureSupabase } = require("../lib/supabase");
 const { requireAuth } = require("../middleware/auth");
 const { mockPatients } = require("../data/mockPatients");
 const { predictRisk } = require("../services/riskService");
+const { shouldUseLocalSql, listPatients, getPatientById } = require("../lib/localSql");
 
 const router = express.Router();
 
@@ -18,8 +19,24 @@ function applyRisk(patient = {}) {
   };
 }
 
+function mapPatientForResponse(patient = {}) {
+  return {
+    ...patient,
+    risk_score: patient.risk_score ?? patient.riskScore ?? patient.prediction_percentage ?? patient.readmission_probability ?? 0,
+    risk_level: patient.risk_level ?? patient.riskLevel ?? "Medium",
+    prediction_percentage:
+      patient.prediction_percentage ?? patient.risk_score ?? patient.riskScore ?? patient.readmission_probability ?? 0,
+    riskReasons: patient.riskReasons || patient.reasons || [],
+    followUpSuggestion: patient.followUpSuggestion || "",
+  };
+}
+
 router.get("/", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
+    if (shouldUseLocalSql()) {
+      const rows = listPatients();
+      return res.json(rows.map((patient) => mapPatientForResponse(patient)));
+    }
     const patients = req.app.locals.mockStore?.patients || mockPatients;
     const alerts = req.app.locals.mockStore?.alerts || [];
     return res.json(
@@ -68,6 +85,11 @@ router.get("/", requireAuth, async (req, res) => {
 
 router.get("/:id", requireAuth, async (req, res) => {
   if (!supabaseAdmin) {
+    if (shouldUseLocalSql()) {
+      const patient = getPatientById(req.params.id);
+      if (!patient) return res.status(404).json({ message: "Patient not found" });
+      return res.json(mapPatientForResponse(patient));
+    }
     const patients = req.app.locals.mockStore?.patients || mockPatients;
     const patient = patients.find((item) => item.id === String(req.params.id));
     if (!patient) return res.status(404).json({ message: "Patient not found" });

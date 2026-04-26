@@ -137,8 +137,22 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
         originalInstructions: originalText,
         language,
       });
-      setSimplifiedText(result.simplifiedInstructions || "");
-      setStatusMessage("Instructions simplified.");
+      const simplified = result.simplifiedInstructions || "";
+      setSimplifiedText(simplified);
+      await sendInstructionsToPatient({
+        patientId: selectedPatientId,
+        originalText,
+        simplifiedText: simplified,
+        translatedText,
+        language,
+      });
+      const instructions = await getInstructionHistory(selectedPatientId).catch(() => []);
+      setInstructionHistory(Array.isArray(instructions) ? instructions : []);
+      setStatusMessage(
+        result?.method === "openai"
+          ? "Simplified with AI and sent to patient."
+          : "Simplified with fallback and sent to patient."
+      );
     } catch (_error) {
       setStatusMessage("Simplify failed. Check backend/API and try again.");
     }

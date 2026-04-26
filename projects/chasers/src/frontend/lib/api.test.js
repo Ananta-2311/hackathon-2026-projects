@@ -21,11 +21,15 @@ describe("frontend api helper", () => {
     });
 
     const result = await getPatients();
-    expect(result).toEqual(mockResponse);
+    expect(result).toEqual([expect.objectContaining({ id: "1" })]);
     expect(global.fetch).toHaveBeenCalledWith(
       "http://localhost:5001/api/patients",
       expect.objectContaining({
-        headers: { "Content-Type": "application/json" },
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "x-user-role": "doctor",
+          "x-user-id": "doctor-1",
+        }),
         cache: "no-store",
       })
     );

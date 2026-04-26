@@ -21,6 +21,13 @@ Server runs on `http://localhost:5001`.
    - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
 
+## Local SQL fallback (no Supabase)
+
+If Supabase keys are missing, backend now uses a local SQLite database at `local/dischargeiq.local.db`.
+
+- Schema reference: `local/schema.sql`
+- This mode persists doctor discharge notes and patient dashboard data locally.
+
 ## API Routes
 
 - `GET /api/health`

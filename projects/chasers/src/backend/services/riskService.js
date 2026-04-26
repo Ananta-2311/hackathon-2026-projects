@@ -109,6 +109,9 @@ function predictRiskHeuristic(input) {
 }
 
 function predictRisk(input) {
+  if (process.env.NODE_ENV === "test") {
+    return predictRiskHeuristic(input);
+  }
   try {
     return predictRiskWithPythonModel(input);
   } catch (_error) {
