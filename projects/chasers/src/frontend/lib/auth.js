@@ -17,3 +17,9 @@ export async function getAccessToken() {
   const { data } = await supabase.auth.getSession();
   return data?.session?.access_token || null;
 }
+
+export async function getCurrentUserId() {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getUser();
+  return data?.user?.id || null;
+}

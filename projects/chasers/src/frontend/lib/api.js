@@ -1,4 +1,4 @@
-import { getAccessToken } from "./auth";
+import { getAccessToken, getCurrentUserId } from "./auth";
 
 const viteBaseUrl =
   typeof import.meta !== "undefined" && import.meta.env
@@ -35,16 +35,18 @@ function normalizePatient(patient = {}) {
     patient.predictionPercentage ??
     patient.prediction_percentage ??
     patient.readmission_probability ??
-    patient.riskScore ??
-    50;
-  const riskScore = Number(prediction);
+    patient.riskScore;
+  const riskScore = Number.isFinite(Number(prediction)) ? Number(prediction) : null;
   return {
     ...patient,
     doctor: patient.doctor ?? patient.doctorName ?? "Care Team",
     dischargeDate: patient.dischargeDate ?? patient.discharge_date ?? patient.created_at ?? "-",
     riskScore,
-    predictionPercentage: riskScore,
-    riskLevel: patient.riskLevel ?? patient.risk_level ?? (riskScore >= 70 ? "High" : riskScore >= 40 ? "Medium" : "Low"),
+    predictionPercentage: riskScore ?? patient.predictionPercentage ?? patient.prediction_percentage ?? patient.readmission_probability,
+    riskLevel:
+      patient.riskLevel ??
+      patient.risk_level ??
+      (riskScore == null ? "Medium" : riskScore >= 70 ? "High" : riskScore >= 40 ? "Medium" : "Low"),
     riskReasons: patient.riskReasons ?? patient.reasons ?? [],
   };
 }
@@ -107,11 +109,25 @@ export function extractPrescription(data) {
 }
 
 export function sendChatMessage(data) {
-  return request("/chat", {
-    method: "POST",
-    headers: { "x-user-role": "patient", "x-user-id": "patient-1" },
-    body: JSON.stringify(data),
-  });
+  return getCurrentUserId()
+    .then((userId) =>
+      fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": "patient",
+          "x-user-id": userId || "",
+        },
+        body: JSON.stringify(data),
+        cache: "no-store",
+      })
+    )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+      return response.json();
+    });
 }
 
 export function getAlerts() {
@@ -119,48 +135,27 @@ export function getAlerts() {
 }
 
 export function getPatientDashboardData() {
-  const mariaFallback = {
-    patient: {
-      id: "60a0567c-d7b8-4139-accc-d103ca919017",
-      name: "Maria",
-      age: 74,
-      gender: "Female",
-      email: "patient@dischargeiq.com",
-      phone: "",
-      address: "",
-      diagnosis: "Heart Failure",
-      doctor: "Dr. Smith",
-      dischargeDate: new Date().toISOString(),
-      medicalHistory: "",
-      prescription: "",
-      patientReport: "",
-      predictionPercentage: 50,
-      riskLevel: "Medium",
-      conditionsCount: 6,
-      medicationsCount: 9,
-      encountersCount: 12,
-      priorAdmissions: 4,
-      currentAppointment: "",
-      nextAppointmentDate: "",
-    },
-    dischargeNotes: {
-      originalNote:
-        "Administer prescribed cardiac medication twice daily with food and monitor for dyspnea, chest discomfort, edema, or dizziness.",
-      simplifiedNote:
-        "Take your heart medicine two times a day with food. Call your doctor if you have chest pain, trouble breathing, swelling, or dizziness.",
-    },
-    chatMessages: [],
-    alerts: [],
-  };
-
-  return request("/patient-dashboard?patient_id=60a0567c-d7b8-4139-accc-d103ca919017", {
-    headers: { "x-user-role": "patient", "x-user-id": "patient-1" },
-  })
+  return getCurrentUserId()
+    .then((userId) =>
+      fetch("http://127.0.0.1:8000/patient-dashboard", {
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-role": "patient",
+          "x-user-id": userId || "",
+        },
+        cache: "no-store",
+      })
+    )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+      return response.json();
+    })
     .then((dashboard) => ({
       ...dashboard,
       patient: normalizePatient(dashboard?.patient || {}),
-    }))
-    .catch(() => mariaFallback);
+    }));
 }
 
 export { API_BASE_URL };

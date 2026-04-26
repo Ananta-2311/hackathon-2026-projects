@@ -13,13 +13,18 @@ export default function PatientLoginForm() {
   const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (email === "patient@dischargeiq.com" && password === "patient123") {
+    const allowed = [
+      "patient@dischargeiq.com",
+      "john@dischargeiq.com",
+      "aisha@dischargeiq.com",
+    ];
+    if (allowed.includes(email) && password === "password123") {
       setError("");
       router.push("/patient-dashboard");
       return;
     }
 
-    setError("Invalid credentials. Try patient@dischargeiq.com / patient123.");
+    setError("Invalid credentials. Try john@dischargeiq.com or aisha@dischargeiq.com with password123.");
   };
 
   return (
@@ -46,7 +51,7 @@ export default function PatientLoginForm() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               className="mt-1 w-full rounded-xl border border-emerald-200 px-4 py-2.5 text-sm outline-none ring-emerald-500 focus:ring-2"
-              placeholder="patient@dischargeiq.com"
+              placeholder="john@dischargeiq.com"
               required
             />
           </div>
@@ -63,7 +68,7 @@ export default function PatientLoginForm() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               className="mt-1 w-full rounded-xl border border-emerald-200 px-4 py-2.5 text-sm outline-none ring-emerald-500 focus:ring-2"
-              placeholder="patient123"
+              placeholder="password123"
               required
             />
           </div>
