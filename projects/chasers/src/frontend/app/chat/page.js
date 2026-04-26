@@ -1,8 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { getPatientDashboardData, sendChatMessage } from "@/lib/api";
+import { sendChatMessage } from "@/lib/api";
+
+const initialMessages = [
+  {
+    id: 1,
+    role: "bot",
+    text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling today?",
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  },
+];
+
+const emergencyKeywords = [
+  "chest pain",
+  "shortness of breath",
+  "severe pain",
+  "fainting",
+  "cant breathe",
+  "can't breathe",
+  "swelling",
+  "high fever",
+];
 
 const getTime = () =>
   new Date().toLocaleTimeString([], {
@@ -11,39 +34,20 @@ const getTime = () =>
   });
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
-  const handleEmergencyCall = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = "tel:911";
-    }
-  };
-
   const [isBotTyping, setIsBotTyping] = useState(false);
-  const [patientId, setPatientId] = useState("");
-
-  useEffect(() => {
-    getPatientDashboardData()
-      .then((data) => setPatientId(data?.patient?.id || ""))
-      .catch(() => setPatientId(""));
-  }, []);
-
-  useEffect(() => {
-    setMessages([
-      {
-        id: 1,
-        role: "bot",
-        text: "Hi Maria, I am your DischargeIQ assistant. How are you feeling today?",
-        time: getTime(),
-      },
-    ]);
-  }, []);
 
   const handleSend = async (event) => {
     event.preventDefault();
     const value = input.trim();
     if (!value) return;
+
+    const normalizedText = value.toLowerCase();
+    const isEmergency = emergencyKeywords.some((keyword) =>
+      normalizedText.includes(keyword)
+    );
 
     const patientMessage = {
       id: Date.now(),
@@ -54,13 +58,15 @@ export default function ChatPage() {
 
     setMessages((prev) => [...prev, patientMessage]);
     setIsBotTyping(true);
+    setShowEmergencyAlert(isEmergency);
     setInput("");
 
-    let botText = "I could not generate a response right now.";
+    let botText =
+      "Thank you for sharing. Please continue resting and stay hydrated. Contact your care team if symptoms worsen.";
     try {
-      const response = await sendChatMessage({ patient_id: patientId, message: value });
+      const response = await sendChatMessage({ message: value });
       botText = response.reply || botText;
-      setShowEmergencyAlert(Boolean((response.alerts_created || 0) > 0));
+      setShowEmergencyAlert(Boolean(response.alertCreated));
     } catch (_error) {
       await new Promise((resolve) => {
         setTimeout(resolve, 700);
@@ -70,7 +76,9 @@ export default function ChatPage() {
     const botMessage = {
       id: Date.now() + 1,
       role: "bot",
-      text: botText,
+      text: isEmergency
+        ? "This may be an emergency. Please call 911 or go to the ER now. Your doctor has been notified."
+        : botText,
       time: getTime(),
     };
 
@@ -92,15 +100,8 @@ export default function ChatPage() {
         </header>
 
         {showEmergencyAlert ? (
-          <div className="mx-5 mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
-            <p className="animate-pulse">🚨 Emergency detected! Alerting Dr. Smith now...</p>
-            <button
-              type="button"
-              onClick={handleEmergencyCall}
-              className="mt-3 rounded-lg bg-red-700 px-3 py-2 text-xs font-bold text-white hover:bg-red-800"
-            >
-              Call 911 Now
-            </button>
+          <div className="mx-5 mt-4 animate-pulse rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800 sm:mx-6">
+            🚨 Emergency detected! Alerting Dr. Smith now...
           </div>
         ) : null}
 

@@ -1,52 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getPatientDashboardData } from "@/lib/api";
 
 export default function PatientDashboardPanels() {
   const [dashboard, setDashboard] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [notification, setNotification] = useState("");
-  const lastNoteCreatedAtRef = useRef("");
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadDashboard(isRefresh = false) {
-      try {
-        const data = await getPatientDashboardData();
-        if (!isMounted) return;
-        setDashboard(data);
-
-        const newestNoteCreatedAt =
-          data?.dischargeNotes?.createdAt || data?.discharge_notes?.created_at || "";
-        if (
-          isRefresh &&
-          newestNoteCreatedAt &&
-          lastNoteCreatedAtRef.current &&
-          newestNoteCreatedAt !== lastNoteCreatedAtRef.current
-        ) {
-          setNotification("New instructions from your doctor are available.");
-        }
-        if (newestNoteCreatedAt) {
-          lastNoteCreatedAtRef.current = newestNoteCreatedAt;
-        }
-      } catch (_error) {
-        if (!isMounted) return;
-        setErrorMessage("Unable to load your dashboard right now.");
-      }
-    }
-
-    loadDashboard(false);
-    const intervalId = setInterval(() => {
-      loadDashboard(true).catch(() => {});
-    }, 10000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
+    getPatientDashboardData()
+      .then((data) => setDashboard(data))
+      .catch(() => setErrorMessage("Unable to load your dashboard right now."));
   }, []);
 
   const patient = dashboard?.patient || dashboard || {};
@@ -62,8 +27,17 @@ export default function PatientDashboardPanels() {
       dashboard?.simplifiedNote ||
       "",
   };
-  const noteHistory = Array.isArray(dashboard?.noteHistory) ? dashboard.noteHistory : [];
-  const reminders = Array.isArray(patient?.reminders) ? patient.reminders : [];
+  const fallbackDoctorNote =
+    "Administer prescribed cardiac medication twice daily with food and monitor for dyspnea, chest discomfort, edema, or dizziness.";
+  const fallbackSimplifiedNote =
+    "Take your heart medicine two times a day with food. Call your doctor if you have chest pain, trouble breathing, swelling, or dizziness.";
+  const fallbackReminders = [
+    { name: "Metoprolol", dose: "25mg", schedule: "twice daily", dueTime: "Morning & Evening" },
+    { name: "Furosemide", dose: "20mg", schedule: "once daily", dueTime: "Morning" },
+    { name: "Lisinopril", dose: "10mg", schedule: "once daily", dueTime: "Morning" },
+  ];
+  const reminders =
+    Array.isArray(patient?.reminders) && patient.reminders.length ? patient.reminders : fallbackReminders;
   const dischargeDateRaw = patient?.dischargeDate || patient?.discharge_date || patient?.created_at || "";
   const dischargeDate = useMemo(() => {
     if (!dischargeDateRaw) return "-";
@@ -111,7 +85,6 @@ export default function PatientDashboardPanels() {
       </header>
 
       {errorMessage ? <p className="mb-4 font-semibold text-red-700">{errorMessage}</p> : null}
-      {notification ? <p className="mb-4 rounded border border-blue-200 bg-blue-50 p-3 font-semibold text-blue-900">{notification}</p> : null}
 
       <section className="space-y-5 text-base">
         <article className="border border-slate-300 bg-white p-6">
@@ -119,11 +92,15 @@ export default function PatientDashboardPanels() {
           <div className="mt-4 space-y-3">
             <div className="border p-3">
               <p className="mb-1 font-semibold">Doctor&apos;s Notes</p>
-              <p className="text-slate-700">{dischargeNotes.originalNote || "-"}</p>
+              <p className="text-slate-700">
+                {dischargeNotes.originalNote || fallbackDoctorNote}
+              </p>
             </div>
             <div className="border p-3">
               <p className="mb-1 font-semibold">Your Instructions</p>
-              <p className="text-slate-700">{dischargeNotes.simplifiedNote || "-"}</p>
+              <p className="text-slate-700">
+                {dischargeNotes.simplifiedNote || fallbackSimplifiedNote}
+              </p>
             </div>
             {dischargeNotes?.translatedNote ? (
               <div className="border p-3">
@@ -132,27 +109,6 @@ export default function PatientDashboardPanels() {
               </div>
             ) : null}
           </div>
-        </article>
-
-        <article className="border border-slate-300 bg-white p-6">
-          <h2 className="text-xl font-semibold text-slate-900">Previous Notes</h2>
-          {noteHistory.length ? (
-            <div className="mt-3 space-y-3">
-              {noteHistory.map((note) => (
-                <div key={note.id || `${note.createdAt}-${note.originalNote}`} className="border p-3">
-                  <p className="mb-1 text-sm font-semibold text-slate-800">{note.createdAt || "Unknown date"}</p>
-                  <p className="text-sm text-slate-700">
-                    <span className="font-semibold">Original:</span> {note.originalNote || "-"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    <span className="font-semibold">Simplified:</span> {note.simplifiedNote || "-"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-600">No previous notes yet.</p>
-          )}
         </article>
 
         <article className="border border-slate-300 bg-white p-6">

@@ -2,14 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import {
+  extractPrescription,
+  getAlerts,
+  getPatientById,
+  getPatients,
+  sendInstructionsToPatient,
+  simplifyInstructions,
+  translateInstructions,
+} from "@/lib/api";
 
 const languages = [
-  { label: "English", value: "English" },
-  { label: "Spanish", value: "Spanish" },
-  { label: "French", value: "French" },
-  { label: "Arabic", value: "Arabic" },
-  { label: "Mandarin", value: "Mandarin" },
-  { label: "Hindi", value: "Hindi" },
+  { label: "English", value: "en" },
+  { label: "Spanish", value: "es" },
+  { label: "French", value: "fr" },
+  { label: "Arabic", value: "ar" },
+  { label: "Mandarin", value: "zh" },
+  { label: "Hindi", value: "hi" },
 ];
 
 function badgeClass(score) {
@@ -19,55 +28,24 @@ function badgeClass(score) {
 }
 
 export default function DoctorDashboardPanels({ showLogout = true }) {
-  const apiBaseUrl = "http://127.0.0.1:8000";
   const [patients, setPatients] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState(null);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [previousNotes, setPreviousNotes] = useState([]);
-  const [chatHistory, setChatHistory] = useState([]);
   const [originalText, setOriginalText] = useState("");
   const [simplifiedText, setSimplifiedText] = useState("");
-  const [language, setLanguage] = useState("English");
+  const [language, setLanguage] = useState("en");
+  const [translatedText, setTranslatedText] = useState("");
   const [prescriptionText, setPrescriptionText] = useState("");
   const [extractedReminders, setExtractedReminders] = useState([]);
   const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
     async function loadData() {
-      let patientsData = [];
-      let patientsError = "";
-      try {
-        const patientsResponse = await fetch(`${apiBaseUrl}/patients`, {
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-        });
-        if (!patientsResponse.ok) {
-          throw new Error(`Patients API failed: ${patientsResponse.status}`);
-        }
-        const response = await patientsResponse.json();
-        patientsData = response.patients || [];
-        patientsError = response.error || "";
-      } catch (_error) {
-        patientsData = [];
-        patientsError = "Could not load patients from backend.";
-      }
-
-      try {
-        const alertsResponse = await fetch(`${apiBaseUrl}/alerts`, { cache: "no-store" });
-        const alertsData = await alertsResponse.json();
-        setAlerts(Array.isArray(alertsData?.alerts) ? alertsData.alerts : []);
-      } catch (_error) {
-        setAlerts([]);
-      }
-
+      const [patientsData, alertsData] = await Promise.all([getPatients(), getAlerts()]);
       setPatients(patientsData || []);
-      if (patientsData?.length) {
-        setSelectedPatientId(patientsData[0].id);
-        setStatusMessage(patientsError);
-      } else {
-        setStatusMessage("Could not load dashboard data.");
-      }
+      setAlerts(alertsData || []);
+      if (patientsData?.length) setSelectedPatientId(patientsData[0].id);
     }
 
     loadData().catch(() => setStatusMessage("Could not load dashboard data."));
@@ -75,53 +53,15 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
 
   useEffect(() => {
     if (!selectedPatientId) return;
-
-    const patient = patients.find((item) => String(item.id) === String(selectedPatientId)) || null;
-    setSelectedPatient(patient);
-    setOriginalText("");
-    setSimplifiedText("");
-    setPreviousNotes([]);
-    setChatHistory([]);
-
-    async function loadPatientDetails() {
-      try {
-        const dashboardResponse = await fetch(`${apiBaseUrl}/patient-dashboard?patient_id=${selectedPatientId}`, {
-          cache: "no-store",
-        });
-        const dashboardData = await dashboardResponse.json();
-        if (dashboardData?.patient) {
-          setSelectedPatient((prev) => ({ ...(prev || {}), ...dashboardData.patient }));
-        }
-        if (dashboardData?.dischargeNotes?.originalNote) {
-          setOriginalText(dashboardData.dischargeNotes.originalNote);
-        }
-      } catch (_error) {
-        setStatusMessage("Could not load patient details.");
-      }
-
-      try {
-        const notesResponse = await fetch(`${apiBaseUrl}/discharge-notes?patient_id=${selectedPatientId}`, {
-          cache: "no-store",
-        });
-        const notesData = await notesResponse.json();
-        setPreviousNotes(Array.isArray(notesData?.notes) ? notesData.notes : []);
-      } catch (_error) {
-        setPreviousNotes([]);
-      }
-
-      try {
-        const chatResponse = await fetch(`${apiBaseUrl}/chat-history?patient_id=${selectedPatientId}`, {
-          cache: "no-store",
-        });
-        const chatData = await chatResponse.json();
-        setChatHistory(Array.isArray(chatData?.chatMessages) ? chatData.chatMessages : []);
-      } catch (_error) {
-        setChatHistory([]);
-      }
-    }
-
-    loadPatientDetails().catch(() => setStatusMessage("Could not load patient details."));
-  }, [selectedPatientId, patients]);
+    getPatientById(selectedPatientId)
+      .then((data) => {
+        setSelectedPatient(data);
+        setOriginalText(data.doctorNotes || "");
+        setSimplifiedText(data.simplifiedInstructions || "");
+        setTranslatedText(data.translatedInstructions || "");
+      })
+      .catch(() => setStatusMessage("Could not load patient details."));
+  }, [selectedPatientId]);
 
   const alertByPatient = useMemo(() => {
     const map = {};
@@ -133,70 +73,28 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
     return map;
   }, [alerts]);
 
-  const selectedPatientAlerts = useMemo(
-    () =>
-      alerts.filter(
-        (alert) =>
-          String(alert.patientId || alert.patient_id) === String(selectedPatientId) &&
-          String(alert.severity || "").toLowerCase() === "high"
-      ),
-    [alerts, selectedPatientId]
-  );
-  const emergencyAlert = selectedPatientAlerts[0] || null;
-  const chatSummary = useMemo(() => {
-    if (!chatHistory.length) {
-      return {
-        totalMessages: 0,
-        patientMessages: 0,
-        latestPatientMessage: "No patient chat messages yet.",
-        urgentSignals: [],
-      };
-    }
-
-    const patientMsgs = chatHistory.filter(
-      (message) => String(message.sender || message.role || "").toLowerCase() === "user"
-    );
-    const latestPatient = patientMsgs[patientMsgs.length - 1];
-    const urgentKeywords = [
-      "chest pain",
-      "shortness of breath",
-      "trouble breathing",
-      "severe pain",
-      "fainting",
-      "confusion",
-      "bleeding",
-    ];
-    const allPatientText = patientMsgs.map((item) => String(item.message || "").toLowerCase()).join(" ");
-    const urgentSignals = urgentKeywords.filter((keyword) => allPatientText.includes(keyword));
-
-    return {
-      totalMessages: chatHistory.length,
-      patientMessages: patientMsgs.length,
-      latestPatientMessage: latestPatient?.message || "No patient chat messages yet.",
-      urgentSignals,
-    };
-  }, [chatHistory]);
-
   async function onSimplify() {
     if (!selectedPatientId || !originalText.trim()) return;
     try {
-      const response = await fetch(`${apiBaseUrl}/simplify-discharge`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_id: selectedPatientId,
-          note: originalText,
-          language,
-        }),
+      const result = await simplifyInstructions({
+        patientId: selectedPatientId,
+        originalInstructions: originalText,
+        language,
       });
-      if (!response.ok) {
-        throw new Error(`Simplify failed: ${response.status}`);
-      }
-      const result = await response.json();
-      setSimplifiedText(result.simplifiedNote || "");
+      setSimplifiedText(result.simplifiedInstructions || "");
       setStatusMessage("Instructions simplified.");
     } catch (_error) {
       setStatusMessage("Simplify failed. Check backend/API and try again.");
+    }
+  }
+
+  async function onTranslate() {
+    try {
+      const result = await translateInstructions({ text: simplifiedText, language });
+      setTranslatedText(result.translatedText || "");
+      setStatusMessage("Instructions translated.");
+    } catch (_error) {
+      setStatusMessage("Translate failed. Check backend/API and try again.");
     }
   }
 
@@ -215,21 +113,14 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
     }
 
     try {
-      const response = await fetch(`${apiBaseUrl}/send-discharge-note`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_id: selectedPatientId,
-          original_note: originalText,
-          simplified_note: simplifiedText,
-          language,
-        }),
+      await sendInstructionsToPatient({
+        patientId: selectedPatientId,
+        originalText,
+        simplifiedText,
+        translatedText,
+        language,
       });
-      if (!response.ok) {
-        throw new Error(`Send failed: ${response.status}`);
-      }
-      await response.json();
-      setStatusMessage("Sent to patient.");
+      setStatusMessage("Instructions sent to patient.");
     } catch (_error) {
       setStatusMessage("Send failed. Check backend/API and try again.");
     }
@@ -238,28 +129,12 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
   async function onExtractPrescription() {
     if (!selectedPatientId) return;
     try {
-      const response = await fetch(`${apiBaseUrl}/update-prescription`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patient_id: selectedPatientId,
-          prescription: prescriptionText,
-        }),
+      const result = await extractPrescription({
+        patientId: selectedPatientId,
+        prescriptionText,
       });
-      if (!response.ok) {
-        throw new Error(`Prescription extraction failed: ${response.status}`);
-      }
-      const result = await response.json();
-      const reminders = result.reminders || [];
-      setExtractedReminders(reminders);
-      setStatusMessage("Prescription updated.");
-      setPatients((prev) =>
-        prev.map((patient) =>
-          String(patient.id) === String(selectedPatientId)
-            ? { ...patient, prescription: prescriptionText, medicationsCount: reminders.length || 0 }
-            : patient
-        )
-      );
+      setExtractedReminders(result.extracted || []);
+      setStatusMessage(result.confirmation || "Prescription extracted.");
     } catch (_error) {
       setStatusMessage("Prescription extraction failed. Check backend/API and try again.");
     }
@@ -288,7 +163,6 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
                 ...(patient.alerts || []),
                 ...(alertByPatient[String(patient.id)] || []),
               ];
-              const prediction = patient.predictionPercentage ?? patient.riskScore ?? 0;
               return (
                 <button
                   key={patient.id}
@@ -301,13 +175,12 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-slate-900">{patient.name}</p>
-                      <p className="text-xs text-slate-600">{patient.diagnosis}</p>
-                      <p className="text-xs text-slate-700">
-                        {patient.riskLevel || "Medium"} ({prediction}%)
+                      <p className="text-xs text-slate-600">
+                        Age {patient.age} • {patient.diagnosis}
                       </p>
                     </div>
-                    <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${badgeClass(prediction)}`}>
-                      {prediction}%
+                    <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${badgeClass(patient.riskScore)}`}>
+                      {patient.riskScore}%
                     </span>
                   </div>
                   {patientAlerts[0] ? (
@@ -327,37 +200,17 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
                 <p className="font-semibold text-slate-900">
                   {selectedPatient.name} • Age {selectedPatient.age}
                 </p>
-                <p>ID: {selectedPatient.id || "N/A"}</p>
-                <p>Diagnosis: {selectedPatient.diagnosis || "N/A"}</p>
-                <p>Email: {selectedPatient.email || "N/A"}</p>
-                <p>Phone: {selectedPatient.phone || "N/A"}</p>
-                <p>Address: {selectedPatient.address || "N/A"}</p>
-                <p>Risk: {selectedPatient.riskLevel || "Medium"}</p>
-                <p className="font-semibold text-slate-900">
-                  Prediction: {selectedPatient.predictionPercentage ?? selectedPatient.readmissionProbability ?? "-"}%
-                </p>
-                <p>Medical history: {selectedPatient.medicalHistory || "N/A"}</p>
-                <p>Prescription: {selectedPatient.prescription || "N/A"}</p>
-                <p>Patient report: {selectedPatient.patientReport || "N/A"}</p>
-                <div>
-                  <p className="font-semibold text-slate-900">Risk reasons</p>
-                  <ul className="list-disc pl-5">
-                    {(selectedPatient.riskReasons || []).map((reason) => (
-                      <li key={reason}>{reason}</li>
-                    ))}
-                  </ul>
-                </div>
+                <p>Diagnosis: {selectedPatient.diagnosis}</p>
+                <p>Medical history: {(selectedPatient.medicalHistory || []).join(", ") || "N/A"}</p>
+                <p className="font-semibold text-slate-900">Risk: {selectedPatient.riskScore}%</p>
+                <ul className="list-disc pl-5">
+                  {(selectedPatient.riskReasons || []).map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
                 <p className="rounded bg-blue-50 p-2 font-medium text-blue-900">
-                  Recommended action: {selectedPatient.recommendedAction || "Standard discharge follow-up in 14 days."}
+                  {selectedPatient.followUpSuggestion}
                 </p>
-                {selectedPatientAlerts.length ? (
-                  <div className="rounded border border-red-200 bg-red-50 p-2 text-red-800">
-                    <p className="font-semibold">High alerts</p>
-                    {selectedPatientAlerts.map((alert) => (
-                      <p key={alert.id || alert.message}>- {alert.message}</p>
-                    ))}
-                  </div>
-                ) : null}
               </div>
             ) : null}
           </article>
@@ -381,6 +234,9 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
                   </option>
                 ))}
               </select>
+              <button type="button" onClick={onTranslate} className="rounded border px-3 py-1.5 text-xs font-semibold">
+                Translate
+              </button>
               <button type="button" onClick={onSend} className="rounded bg-green-700 px-3 py-1.5 text-xs font-semibold text-white">
                 Send to Patient
               </button>
@@ -393,6 +249,7 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
               <div className="border p-2 text-xs">
                 <p className="mb-1 font-semibold">After</p>
                 <p>{simplifiedText || "-"}</p>
+                {translatedText ? <p className="mt-2 border-t pt-2">{translatedText}</p> : null}
               </div>
             </div>
           </article>
@@ -421,68 +278,6 @@ export default function DoctorDashboardPanels({ showLogout = true }) {
                 ))}
               </ul>
             ) : null}
-          </article>
-
-          <article className="border border-slate-200 bg-white p-4">
-            <h3 className="font-semibold text-slate-900">Previous Notes</h3>
-            {previousNotes.length ? (
-              <div className="mt-2 space-y-2 text-xs">
-                {previousNotes.map((note) => (
-                  <div key={note.id || `${note.patient_id}-${note.created_at}`} className="border p-2">
-                    <p className="font-semibold">{note.created_at || "Unknown date"}</p>
-                    <p>Doctor: {note.original_note || "-"}</p>
-                    <p>Simplified: {note.simplified_note || "-"}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-slate-600">No previous notes for this patient.</p>
-            )}
-          </article>
-
-          <article className="border border-slate-200 bg-white p-4">
-            <h3 className="font-semibold text-slate-900">Chat History</h3>
-            {chatHistory.length ? (
-              <div className="mt-2 space-y-2 text-xs">
-                {chatHistory.map((message) => (
-                  <div key={message.id || `${message.created_at}-${message.message}`} className="border p-2">
-                    <p className="font-semibold">{message.sender || message.role || "Unknown sender"}</p>
-                    <p>{message.message || "-"}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-slate-600">No chat history for this patient.</p>
-            )}
-          </article>
-
-          <article className="border border-slate-200 bg-white p-4">
-            <h3 className="font-semibold text-slate-900">Chat Summary</h3>
-            <div className="mt-2 space-y-2 text-sm text-slate-700">
-              <p>Total messages: {chatSummary.totalMessages}</p>
-              <p>Patient messages: {chatSummary.patientMessages}</p>
-              <p className="rounded bg-slate-50 p-2">
-                <span className="font-semibold">Latest patient concern:</span>{" "}
-                {chatSummary.latestPatientMessage}
-              </p>
-              <p>
-                <span className="font-semibold">Urgent signals:</span>{" "}
-                {chatSummary.urgentSignals.length ? chatSummary.urgentSignals.join(", ") : "None detected"}
-              </p>
-            </div>
-          </article>
-
-          <article className="border border-red-200 bg-red-50 p-4">
-            <h3 className="font-semibold text-red-900">Emergency Right Now</h3>
-            {emergencyAlert ? (
-              <div className="mt-2 text-sm text-red-800">
-                <p className="font-semibold">High-risk alert from patient chatbot</p>
-                <p className="mt-1">{emergencyAlert.message}</p>
-                <p className="mt-2 font-semibold">Action: Contact patient immediately.</p>
-              </div>
-            ) : (
-              <p className="mt-2 text-sm text-red-700">No active high-risk emergency alert right now.</p>
-            )}
           </article>
 
           {statusMessage ? <p className="text-xs font-semibold text-emerald-700">{statusMessage}</p> : null}
