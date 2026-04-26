@@ -1,7 +1,9 @@
 import joblib
 import pandas as pd
+from pathlib import Path
 
-model = joblib.load("model.pkl")
+MODEL_PATH = Path(__file__).resolve().parent / "model.pkl"
+model = joblib.load(MODEL_PATH)
 
 def predict(patient):
     patient_df = pd.DataFrame([patient])

@@ -1,60 +1,46 @@
--- Replace UUIDs with your real auth.users IDs.
--- Example users:
--- doctor@dischargeiq.com
--- patient1@dischargeiq.com
--- patient2@dischargeiq.com
+-- SAFE seed.sql (uses REAL auth users)
+
+-- Insert profiles using real auth users
+insert into profiles (id, full_name, role)
+select id, 'Demo Doctor', 'doctor'
+from auth.users
+where email = 'doctor@dischargeiq.com'
+on conflict (id) do update
+set role = 'doctor';
 
 insert into profiles (id, full_name, role)
-values
-  ('00000000-0000-0000-0000-000000000001', 'Dr. Smith', 'doctor'),
-  ('00000000-0000-0000-0000-000000000002', 'Maria Thompson', 'patient'),
-  ('00000000-0000-0000-0000-000000000003', 'Daniel Cruz', 'patient')
-on conflict (id) do nothing;
+select id, 'Demo Patient', 'patient'
+from auth.users
+where email = 'patient@dischargeiq.com'
+on conflict (id) do update
+set role = 'patient';
 
+-- Insert Maria ONLY if not exists
 insert into patients (
-  id, profile_id, assigned_doctor_id, name, age, gender, diagnosis,
-  diagnosis_count, medication_count, previous_admissions, length_of_stay,
-  risk_score, risk_level
+  profile_id,
+  name,
+  age,
+  gender,
+  diagnosis,
+  conditions_count,
+  medications_count,
+  encounters_count,
+  prior_admissions,
+  risk_level,
+  readmission_probability
 )
-values
-  (
-    '10000000-0000-0000-0000-000000000001',
-    '00000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000001',
-    'Maria Thompson',
-    67,
-    'female',
-    'Heart Failure',
-    3,
-    6,
-    2,
-    8,
-    88,
-    'High'
-  ),
-  (
-    '10000000-0000-0000-0000-000000000002',
-    '00000000-0000-0000-0000-000000000003',
-    '00000000-0000-0000-0000-000000000001',
-    'Daniel Cruz',
-    61,
-    'male',
-    'COPD Exacerbation',
-    2,
-    4,
-    1,
-    5,
-    56,
-    'Medium'
-  )
-on conflict (id) do nothing;
-
-insert into discharge_instructions (patient_id, original_text, simplified_text, language)
-values
-  (
-    '10000000-0000-0000-0000-000000000001',
-    'Take your blood pressure medication every morning after breakfast. Drink at least 6-8 glasses of water unless fluid restriction.',
-    'Take your blood pressure medicine every morning after breakfast. Drink water during the day unless your doctor told you not to.',
-    'en'
-  )
-on conflict do nothing;
+select
+  (select id from profiles where role = 'patient' limit 1),
+  'Maria Gomez',
+  74,
+  'Female',
+  'Heart Failure',
+  6,
+  9,
+  12,
+  4,
+  'High',
+  95.0
+where not exists (
+  select 1 from patients where name = 'Maria Gomez'
+);

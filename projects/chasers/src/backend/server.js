@@ -15,11 +15,13 @@ const { mockPatients } = require("./data/mockPatients");
 
 function createApp() {
   const app = express();
+  const isProduction = process.env.NODE_ENV === "production";
   const allowedOrigins = (process.env.CORS_ORIGIN ||
     "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001")
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const localDevOriginPattern = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
   app.use(
     cors({
@@ -27,7 +29,12 @@ function createApp() {
         if (!origin || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        return callback(new Error("Not allowed by CORS"));
+
+        if (!isProduction && localDevOriginPattern.test(origin)) {
+          return callback(null, true);
+        }
+
+        return callback(new Error(`Not allowed by CORS: ${origin}`));
       },
     })
   );

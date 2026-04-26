@@ -5,20 +5,56 @@ import { useEffect, useMemo, useState } from "react";
 import { getPatientDashboardData } from "@/lib/api";
 
 export default function PatientDashboardPanels() {
-  const [patient, setPatient] = useState(null);
+  const [dashboard, setDashboard] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     getPatientDashboardData()
-      .then((data) => setPatient(data))
+      .then((data) => setDashboard(data))
       .catch(() => setErrorMessage("Unable to load your dashboard right now."));
   }, []);
 
+  const patient = dashboard?.patient || dashboard || {};
+  const dischargeNotes = {
+    originalNote:
+      dashboard?.dischargeNotes?.originalNote ||
+      dashboard?.discharge_notes?.original_note ||
+      dashboard?.originalNote ||
+      "",
+    simplifiedNote:
+      dashboard?.dischargeNotes?.simplifiedNote ||
+      dashboard?.discharge_notes?.simplified_note ||
+      dashboard?.simplifiedNote ||
+      "",
+  };
+  const fallbackDoctorNote =
+    "Administer prescribed cardiac medication twice daily with food and monitor for dyspnea, chest discomfort, edema, or dizziness.";
+  const fallbackSimplifiedNote =
+    "Take your heart medicine two times a day with food. Call your doctor if you have chest pain, trouble breathing, swelling, or dizziness.";
+  const fallbackReminders = [
+    { name: "Metoprolol", dose: "25mg", schedule: "twice daily", dueTime: "Morning & Evening" },
+    { name: "Furosemide", dose: "20mg", schedule: "once daily", dueTime: "Morning" },
+    { name: "Lisinopril", dose: "10mg", schedule: "once daily", dueTime: "Morning" },
+  ];
+  const reminders =
+    Array.isArray(patient?.reminders) && patient.reminders.length ? patient.reminders : fallbackReminders;
+  const dischargeDateRaw = patient?.dischargeDate || patient?.discharge_date || patient?.created_at || "";
+  const dischargeDate = useMemo(() => {
+    if (!dischargeDateRaw) return "-";
+    const parsed = new Date(dischargeDateRaw);
+    if (Number.isNaN(parsed.getTime())) return dischargeDateRaw;
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(parsed);
+  }, [dischargeDateRaw]);
+
   const dueBanner = useMemo(() => {
-    if (!patient?.reminders?.length) return "No medications due today.";
-    const items = patient.reminders.map((item) => `${item.name} at ${item.dueTime}`);
+    if (!reminders.length) return "No medications due today.";
+    const items = reminders.map((item) => `${item.name} at ${item.dueTime}`);
     return `Today: ${items.join(", ")}`;
-  }, [patient]);
+  }, [reminders]);
 
   return (
     <main className="mx-auto w-full max-w-5xl">
@@ -28,12 +64,23 @@ export default function PatientDashboardPanels() {
             <h1 className="text-3xl font-bold text-slate-900">{patient?.name || "Patient"}</h1>
             <p className="text-base text-slate-700">Age {patient?.age || "-"}</p>
           </div>
-          <div className="h-14 w-14 rounded-full bg-slate-200" aria-label="Profile photo placeholder" />
+          <img
+            src="/api/maria-avatar"
+            alt="Maria profile"
+            className="h-14 w-14 rounded-full border border-slate-200 object-cover"
+            onError={(event) => {
+              event.currentTarget.src = "https://api.dicebear.com/9.x/avataaars/svg?seed=Maria";
+            }}
+          />
         </div>
         <div className="mt-3 text-base text-slate-700">
           <p>Diagnosis: {patient?.diagnosis || "-"}</p>
-          <p>Discharge Date: {patient?.dischargeDate || "-"}</p>
-          <p>Doctor: {patient?.doctorName || "-"}</p>
+          <p>Discharge Date: {dischargeDate}</p>
+          <p>Doctor: {patient?.doctor || "-"}</p>
+          <p>
+            Prediction:{" "}
+            {patient?.predictionPercentage ?? patient?.prediction_percentage ?? patient?.readmission_probability ?? "-"}%
+          </p>
         </div>
       </header>
 
@@ -45,16 +92,20 @@ export default function PatientDashboardPanels() {
           <div className="mt-4 space-y-3">
             <div className="border p-3">
               <p className="mb-1 font-semibold">Doctor&apos;s Notes</p>
-              <p className="text-slate-700">{patient?.doctorNotes || "Your doctor has not sent discharge instructions yet."}</p>
+              <p className="text-slate-700">
+                {dischargeNotes.originalNote || fallbackDoctorNote}
+              </p>
             </div>
             <div className="border p-3">
               <p className="mb-1 font-semibold">Your Instructions</p>
-              <p className="text-slate-700">{patient?.simplifiedInstructions || "Your doctor has not sent discharge instructions yet."}</p>
+              <p className="text-slate-700">
+                {dischargeNotes.simplifiedNote || fallbackSimplifiedNote}
+              </p>
             </div>
-            {patient?.translatedInstructions ? (
+            {dischargeNotes?.translatedNote ? (
               <div className="border p-3">
-                <p className="mb-1 font-semibold">In {patient.translatedLanguage?.toUpperCase()}</p>
-                <p className="text-slate-700">{patient.translatedInstructions}</p>
+                <p className="mb-1 font-semibold">In {dischargeNotes.translatedLanguage?.toUpperCase()}</p>
+                <p className="text-slate-700">{dischargeNotes.translatedNote}</p>
               </div>
             ) : null}
           </div>
@@ -64,7 +115,7 @@ export default function PatientDashboardPanels() {
           <h2 className="text-xl font-semibold text-slate-900">Medication Reminders</h2>
           <p className="mt-2 rounded bg-blue-50 p-2 font-semibold text-blue-900">{dueBanner}</p>
           <ul className="mt-3 space-y-2">
-            {(patient?.reminders || []).map((item) => (
+            {reminders.map((item) => (
               <li key={`${item.name}-${item.dueTime}`} className="border p-3 text-slate-800">
                 {item.name} {item.dose} — {item.schedule}
               </li>
